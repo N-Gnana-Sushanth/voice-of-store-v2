@@ -1,0 +1,46 @@
+# Python virtual environment
+.venv/
+venv/
+env/
+ENV/
+
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Testing & Linting
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# Environment and secrets
+.env
+*.env.local
+*.env.*.local
+!.env.example
+
+# Local SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# IDE files
+.vscode/
+.idea/
+
+# Distribution / Build
+dist/
+build/
+*.egg-info/
