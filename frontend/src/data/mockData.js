@@ -410,3 +410,10 @@ export const PLANTED_EVALUATIONS = [
     status: 'Detected Early',
   },
 ];
+
+export const USER_PROFILE = {
+  name: 'Sushanth',
+  initials: 'SU',
+  role: 'HQ Analyst',
+  email: 'sushanth@voiceofstore.internal',
+};

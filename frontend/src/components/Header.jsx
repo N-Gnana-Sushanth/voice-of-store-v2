@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Calendar, MapPin, Bell, ChevronDown } from 'lucide-react';
+import { USER_PROFILE } from '../data/mockData';
 
 export default function Header({ searchPlaceholder = "Search stores, issues, keywords..." }) {
   const [selectedDate, setSelectedDate] = useState("Week of 12 Oct - 18 Oct 2026");
@@ -265,11 +266,11 @@ export default function Header({ searchPlaceholder = "Search stores, issues, key
               letterSpacing: '0.05em',
             }}
           >
-            TB
+            {USER_PROFILE.initials}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
             <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#0f172a' }}>
-              Tabraiz
+              {USER_PROFILE.name}
             </span>
             <span style={{ fontSize: '10.5px', fontWeight: 500, color: '#64748b' }}>
               HQ Analyst

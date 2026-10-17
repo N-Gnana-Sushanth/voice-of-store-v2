@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
+import { USER_PROFILE } from '../data/mockData';
 
 export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
@@ -183,10 +184,10 @@ export default function SettingsPage() {
                 </div>
 
                 <div style={{ fontSize: '12.5px', color: '#334155', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <div><strong>Name:</strong> Tabraiz</div>
+                  <div><strong>Name:</strong> {USER_PROFILE.name}</div>
                   <div><strong>Role:</strong> HQ Lead Operations Analyst</div>
                   <div><strong>Access Level:</strong> Nationwide Multi-store Admin</div>
-                  <div><strong>Email:</strong> tabraiz@voiceofstore.internal</div>
+                  <div><strong>Email:</strong> {USER_PROFILE.email}</div>
                 </div>
               </div>
             </div>
