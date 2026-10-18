@@ -37,6 +37,7 @@ class User(Base):
     store = relationship("Store", back_populates="users")
     acknowledged_alerts = relationship("Alert", foreign_keys="Alert.acknowledged_by_id", back_populates="acknowledged_by")
     resolved_alerts = relationship("Alert", foreign_keys="Alert.resolved_by_id", back_populates="resolved_by")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User {self.email} ({self.role})>"

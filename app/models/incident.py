@@ -61,6 +61,17 @@ class IncidentSentiment:
     ALL = [POSITIVE, NEUTRAL, NEGATIVE]
 
 
+class OwningFunction:
+    STORE_OPS = "Store Ops"
+    SUPPLY_CHAIN = "Supply Chain"
+    MERCHANDISING = "Merchandising"
+    DIGITAL = "Digital"
+    HR = "HR"
+    QUALITY_COMPLIANCE = "Quality & Compliance"
+
+    ALL = [STORE_OPS, SUPPLY_CHAIN, MERCHANDISING, DIGITAL, HR, QUALITY_COMPLIANCE]
+
+
 class Incident(Base):
     __tablename__ = "incidents"
 
@@ -71,6 +82,13 @@ class Incident(Base):
     sentiment = Column(String(50), nullable=False, default=IncidentSentiment.NEGATIVE)
     sentiment_score = Column(Float, nullable=False, default=-0.5)
     classification_confidence = Column(Float, nullable=False, default=0.85)
+    actionability_score = Column(Float, nullable=False, default=0.85)
+
+    # Owning-function routing
+    primary_owner = Column(String(50), nullable=False, default=OwningFunction.STORE_OPS, index=True)
+    secondary_owner = Column(String(50), nullable=True)
+    needs_human_review = Column(Boolean, nullable=False, default=False, index=True)
+    routing_history = Column(JSON, nullable=True)
 
     # Deterministic policy flags
     safety_flag = Column(Boolean, nullable=False, default=False, index=True)

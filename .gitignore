@@ -44,3 +44,7 @@ logs/
 dist/
 build/
 *.egg-info/
+
+# Local duplicate project and existing submission ZIP
+/voice-of-store-backend/
+/voice-of-store-submission.zip

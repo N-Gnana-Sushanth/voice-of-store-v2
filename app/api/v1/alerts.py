@@ -117,7 +117,7 @@ def trigger_scan(
 def acknowledge_alert(
     alert_id: str,
     body: Optional[AlertAcknowledgeRequest] = None,
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.STORE_MANAGER])),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.STORE_MANAGER, UserRole.ANALYST])),
     db: Session = Depends(get_db),
 ) -> AlertResponse:
     """Acknowledge an active emerging issue alert."""
@@ -153,7 +153,7 @@ def acknowledge_alert(
 def resolve_alert(
     alert_id: str,
     resolve_data: AlertResolveRequest,
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.STORE_MANAGER])),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.STORE_MANAGER, UserRole.ANALYST])),
     db: Session = Depends(get_db),
 ) -> AlertResponse:
     """Resolve an alert with mandatory documented action notes."""

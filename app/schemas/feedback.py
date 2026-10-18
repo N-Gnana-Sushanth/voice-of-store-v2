@@ -13,6 +13,9 @@ class FeedbackSubmitSingle(BaseModel):
     store_id: str = Field(..., description="Store UUID or store number")
     text: str = Field(..., min_length=3, max_length=10000, description="Raw feedback narrative")
     source: str = Field(default="customer", description="customer, employee, survey, web, inspection")
+    channel: Optional[str] = Field(default=None, description="Online Reviews, App Ratings & Comments, Staff Shift Notes, Call Centre Tickets")
+    rating: Optional[float] = Field(default=None, ge=1.0, le=5.0, description="Customer star rating (1-5)")
+    language: Optional[str] = Field(default=None, max_length=20, description="en, hi, ta, mr, hinglish")
     event_timestamp: Optional[datetime] = Field(
         default=None,
         description="When the event occurred (ISO 8601). Normalized to UTC. Defaults to ingestion time if omitted.",
@@ -56,6 +59,9 @@ class FeedbackResponse(BaseModel):
     store_id: str
     text: str
     source: str
+    channel: str
+    rating: Optional[float] = None
+    language: str
     event_timestamp: datetime
     ingestion_timestamp: datetime
     idempotency_key: Optional[str] = None

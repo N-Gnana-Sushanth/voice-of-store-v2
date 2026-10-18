@@ -37,7 +37,14 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
 
     # CORS
-    CORS_ORIGINS: Union[List[str], str] = ["http://localhost:3000", "http://localhost:5173"]
+    CORS_ORIGINS: Union[List[str], str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173",
+        "http://localhost:5174",
+    ]
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
@@ -53,8 +60,8 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_MINUTE: int = 120
 
     # ML & Policy Versions
-    MODEL_VERSION: str = "v1.0.0-tfidf-linear"
-    POLICY_VERSION: str = "v1.2.0-deterministic"
+    MODEL_VERSION: str = "v2.0.0-multilingual-tfidf"
+    POLICY_VERSION: str = "v2.0.0-deterministic"
     MODEL_DIR: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ml", "models")
 
     # Initial superadmin credentials (optional bootstrap)

@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey, JSON
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey, JSON, Float
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -21,6 +21,15 @@ class FeedbackSource:
     ALL = [CUSTOMER, EMPLOYEE, SURVEY, WEB, INSPECTION]
 
 
+class FeedbackChannel:
+    ONLINE_REVIEWS = "Online Reviews"
+    APP_RATINGS = "App Ratings & Comments"
+    STAFF_NOTES = "Staff Shift Notes"
+    CALL_CENTRE = "Call Centre Tickets"
+
+    ALL = [ONLINE_REVIEWS, APP_RATINGS, STAFF_NOTES, CALL_CENTRE]
+
+
 class ProcessingStatus:
     PENDING = "PENDING"
     PROCESSED = "PROCESSED"
@@ -36,7 +45,10 @@ class FeedbackRecord(Base):
     store_id = Column(String(36), ForeignKey("stores.id", ondelete="CASCADE"), nullable=False, index=True)
     text = Column(Text, nullable=False)
     source = Column(String(50), nullable=False, default=FeedbackSource.CUSTOMER)
-    
+    channel = Column(String(50), nullable=False, default=FeedbackChannel.ONLINE_REVIEWS, index=True)
+    rating = Column(Float, nullable=True)
+    language = Column(String(20), nullable=False, default="en")
+
     # Event timestamp (normalized to UTC) vs Ingestion timestamp
     event_timestamp = Column(DateTime(timezone=True), nullable=False, index=True)
     ingestion_timestamp = Column(DateTime(timezone=True), nullable=False, default=utc_now, index=True)

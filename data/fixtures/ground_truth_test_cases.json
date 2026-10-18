@@ -1,0 +1,263 @@
+{
+  "version": "2.0.0-independent-manifest",
+  "dataset_description": "Independently labelled synthetic retail incident ground-truth manifest for reproducible pipeline evaluation",
+  "disclaimer": "Software testing fixtures with independently defined incident onsets; real-world production performance remains unvalidated until real production dataset is ingested.",
+  "ground_truth_incidents": [
+    {
+      "incident_id": "GT-INC-001",
+      "name": "Store #128 Walk-in Freezer Cooling Failure",
+      "affected_stores": ["STR-128"],
+      "issue_type": "freezer_failure",
+      "category": "Equipment",
+      "severity": "HIGH",
+      "actionability": true,
+      "expected_owning_function": "Store Ops",
+      "adjudication_status": "ADJUDICATED_TRUE_INCIDENT",
+      "incident_onset_time": "2026-10-06T09:00:00Z",
+      "peak_time": "2026-10-16T18:00:00Z",
+      "onset_date": "2026-10-06T09:00:00Z",
+      "peak_date": "2026-10-16T18:00:00Z",
+      "store_id": "STR-128",
+      "evidence_records": [
+        {
+          "record_id": "REC-001-A",
+          "store_id": "STR-128",
+          "channel": "Staff Shift Notes",
+          "language": "en",
+          "timestamp": "2026-10-06T10:15:00Z",
+          "event_time": "2026-10-06T10:15:00Z",
+          "text": "Freezer #2 temperature display showing 4 degrees above normal threshold.",
+          "is_ground_truth": true
+        },
+        {
+          "record_id": "REC-001-B",
+          "store_id": "STR-128",
+          "channel": "Online Reviews",
+          "language": "en",
+          "timestamp": "2026-10-07T14:30:00Z",
+          "event_time": "2026-10-07T14:30:00Z",
+          "text": "Ice creams were completely melted and soft in aisle 4, unusable.",
+          "is_ground_truth": true
+        },
+        {
+          "record_id": "REC-001-C",
+          "store_id": "STR-128",
+          "channel": "App Ratings & Comments",
+          "language": "en",
+          "timestamp": "2026-10-08T18:20:00Z",
+          "event_time": "2026-10-08T18:20:00Z",
+          "text": "Milk cartons felt warm in the cold storage section, please fix your freezer.",
+          "is_ground_truth": true
+        },
+        {
+          "record_id": "REC-001-D",
+          "store_id": "STR-128",
+          "channel": "Online Reviews",
+          "language": "hinglish",
+          "timestamp": "2026-10-10T11:45:00Z",
+          "event_time": "2026-10-10T11:45:00Z",
+          "text": "Freezer bilkul kaam nahi kar raha, ice cream sab pighal gayi floor par.",
+          "is_ground_truth": true
+        },
+        {
+          "record_id": "REC-001-E",
+          "store_id": "STR-128",
+          "channel": "Call Centre Tickets",
+          "language": "en",
+          "timestamp": "2026-10-12T16:00:00Z",
+          "event_time": "2026-10-12T16:00:00Z",
+          "text": "Customer called about melted frozen desserts bought yesterday at Store 128.",
+          "is_ground_truth": true
+        }
+      ],
+      "records": [
+        {
+          "event_time": "2026-10-06T10:15:00Z",
+          "channel": "Staff Shift Notes",
+          "text": "Freezer #2 temperature display showing 4 degrees above normal threshold.",
+          "is_ground_truth": true
+        },
+        {
+          "event_time": "2026-10-07T14:30:00Z",
+          "channel": "Online Reviews",
+          "text": "Ice creams were completely melted and soft in aisle 4, unusable.",
+          "is_ground_truth": true
+        },
+        {
+          "event_time": "2026-10-08T18:20:00Z",
+          "channel": "App Ratings & Comments",
+          "text": "Milk cartons felt warm in the cold storage section, please fix your freezer.",
+          "is_ground_truth": true
+        },
+        {
+          "event_time": "2026-10-10T11:45:00Z",
+          "channel": "Online Reviews",
+          "text": "Freezer still warm, frozen peas leaking water all over the floor.",
+          "is_ground_truth": true
+        },
+        {
+          "event_time": "2026-10-12T16:00:00Z",
+          "channel": "Call Centre Tickets",
+          "text": "Customer called about melted frozen desserts bought yesterday at Store 128.",
+          "is_ground_truth": true
+        }
+      ]
+    },
+    {
+      "incident_id": "GT-INC-002",
+      "name": "Store #074 Bakery Missing Allergen Warning",
+      "affected_stores": ["STR-074"],
+      "issue_type": "allergen_label",
+      "category": "Food Safety",
+      "severity": "CRITICAL",
+      "actionability": true,
+      "expected_owning_function": "Quality & Compliance",
+      "adjudication_status": "ADJUDICATED_TRUE_INCIDENT",
+      "incident_onset_time": "2026-10-08T10:00:00Z",
+      "peak_time": "2026-10-16T14:00:00Z",
+      "onset_date": "2026-10-08T10:00:00Z",
+      "peak_date": "2026-10-16T14:00:00Z",
+      "store_id": "STR-074",
+      "evidence_records": [
+        {
+          "record_id": "REC-002-A",
+          "store_id": "STR-074",
+          "channel": "Online Reviews",
+          "language": "en",
+          "timestamp": "2026-10-08T11:30:00Z",
+          "event_time": "2026-10-08T11:30:00Z",
+          "text": "Bakery cookies contain walnuts but no allergen label was printed on package.",
+          "is_ground_truth": true
+        },
+        {
+          "record_id": "REC-002-B",
+          "store_id": "STR-074",
+          "channel": "Staff Shift Notes",
+          "language": "en",
+          "timestamp": "2026-10-09T17:15:00Z",
+          "event_time": "2026-10-09T17:15:00Z",
+          "text": "Customer complained that fresh bread packaging omits gluten and peanut warning.",
+          "is_ground_truth": true
+        },
+        {
+          "record_id": "REC-002-C",
+          "store_id": "STR-074",
+          "channel": "Call Centre Tickets",
+          "language": "en",
+          "timestamp": "2026-10-11T13:00:00Z",
+          "event_time": "2026-10-11T13:00:00Z",
+          "text": "Child broke out in severe hives after eating unlabeled artisanal pastry at Pune store.",
+          "is_ground_truth": true
+        }
+      ],
+      "records": [
+        {
+          "event_time": "2026-10-08T11:30:00Z",
+          "channel": "Online Reviews",
+          "text": "Bakery cookies contain walnuts but no allergen label was printed on package.",
+          "is_ground_truth": true
+        },
+        {
+          "event_time": "2026-10-09T17:15:00Z",
+          "channel": "Staff Shift Notes",
+          "text": "Customer complained that fresh bread packaging omits gluten and peanut warning.",
+          "is_ground_truth": true
+        },
+        {
+          "event_time": "2026-10-11T13:00:00Z",
+          "channel": "Call Centre Tickets",
+          "text": "Child broke out in severe hives after eating unlabeled artisanal pastry at Pune store.",
+          "is_ground_truth": true
+        }
+      ]
+    },
+    {
+      "incident_id": "GT-INC-003",
+      "name": "Store #302 Cashier Rush Hour Misconduct",
+      "affected_stores": ["STR-302"],
+      "issue_type": "staff_misconduct",
+      "category": "Customer Service",
+      "severity": "HIGH",
+      "actionability": true,
+      "expected_owning_function": "HR",
+      "adjudication_status": "ADJUDICATED_TRUE_INCIDENT",
+      "incident_onset_time": "2026-10-04T18:00:00Z",
+      "peak_time": "2026-10-16T20:00:00Z",
+      "onset_date": "2026-10-04T18:00:00Z",
+      "peak_date": "2026-10-16T20:00:00Z",
+      "store_id": "STR-302",
+      "evidence_records": [
+        {
+          "record_id": "REC-003-A",
+          "store_id": "STR-302",
+          "channel": "App Ratings & Comments",
+          "language": "en",
+          "timestamp": "2026-10-04T18:30:00Z",
+          "event_time": "2026-10-04T18:30:00Z",
+          "text": "Cashier was rude and slammed items on the scanner during checkout.",
+          "is_ground_truth": true
+        },
+        {
+          "record_id": "REC-003-B",
+          "store_id": "STR-302",
+          "channel": "Online Reviews",
+          "language": "en",
+          "timestamp": "2026-10-05T19:10:00Z",
+          "event_time": "2026-10-05T19:10:00Z",
+          "text": "Staff shouting at customers in Koramangala store, terrible attitude.",
+          "is_ground_truth": true
+        },
+        {
+          "record_id": "REC-003-C",
+          "store_id": "STR-302",
+          "channel": "Call Centre Tickets",
+          "language": "en",
+          "timestamp": "2026-10-07T20:00:00Z",
+          "event_time": "2026-10-07T20:00:00Z",
+          "text": "Repeated complaints about evening shift cashier behavior at Bengaluru branch.",
+          "is_ground_truth": true
+        }
+      ],
+      "records": [
+        {
+          "event_time": "2026-10-04T18:30:00Z",
+          "channel": "App Ratings & Comments",
+          "text": "Cashier was rude and slammed items on the scanner during checkout.",
+          "is_ground_truth": true
+        },
+        {
+          "event_time": "2026-10-05T19:10:00Z",
+          "channel": "Online Reviews",
+          "text": "Staff shouting at customers in Koramangala store, terrible attitude.",
+          "is_ground_truth": true
+        },
+        {
+          "event_time": "2026-10-07T20:00:00Z",
+          "channel": "Call Centre Tickets",
+          "text": "Repeated complaints about evening shift cashier behavior at Bengaluru branch.",
+          "is_ground_truth": true
+        }
+      ]
+    }
+  ],
+  "negative_controls": [
+    {
+      "store_id": "STR-215",
+      "channel": "Online Reviews",
+      "text": "Great shopping experience, store was very clean and cashier was polite.",
+      "is_ground_truth": false
+    },
+    {
+      "store_id": "STR-091",
+      "channel": "Staff Shift Notes",
+      "text": "Routine inventory check completed on aisle 2, stock levels adequate.",
+      "is_ground_truth": false
+    },
+    {
+      "store_id": "STR-412",
+      "channel": "App Ratings & Comments",
+      "text": "Prices are competitive and parking was easy.",
+      "is_ground_truth": false
+    }
+  ]
+}

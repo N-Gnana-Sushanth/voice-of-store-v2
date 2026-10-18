@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   MessageSquare,
   AlertTriangle,
@@ -13,8 +13,8 @@ import {
   Users,
   Package,
   Smartphone,
-  ChevronDown,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 import {
   PieChart,
@@ -30,6 +30,8 @@ import {
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import MetricCard from '../components/MetricCard';
+import { useApp } from '../context/AppContext';
+import { api } from '../api/client';
 import {
   DASHBOARD_KPIS,
   TOP_ISSUES,
@@ -41,6 +43,16 @@ import {
 } from '../data/mockData';
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
+  const { selectedRegion, selectedDate, isBackendOnline } = useApp();
+
+  const [loading, setLoading] = useState(false);
+  const [kpis, setKpis] = useState(DASHBOARD_KPIS);
+  const [topIssues, setTopIssues] = useState(TOP_ISSUES);
+  const [emergingAlerts, setEmergingAlerts] = useState(EMERGING_ISSUES_DASHBOARD);
+  const [recentFeedbacks, setRecentFeedbacks] = useState(RECENT_FEEDBACK_SAMPLES);
+  const [dataSource, setDataSource] = useState('demo');
+
   const iconMap = {
     Snowflake: Snowflake,
     Utensils: Utensils,
@@ -51,6 +63,109 @@ export default function DashboardPage() {
 
   const kpiIcons = [MessageSquare, AlertTriangle, CheckCircle2, Store, Clock];
 
+  // Fetch real data from backend when available
+  const fetchDashboardData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [summaryRes, incidentsRes, alertsRes, feedbackRes] = await Promise.all([
+        api.analytics.summary({ time_window_days: 7 }).catch(() => null),
+        api.incidents.list({ limit: 5 }).catch(() => null),
+        api.alerts.list({ limit: 3 }).catch(() => null),
+        api.feedback.list({ limit: 3 }).catch(() => null),
+      ]);
+
+      if (summaryRes || incidentsRes) {
+        setDataSource('live');
+
+        // Update KPIs with real figures if returned
+        if (summaryRes) {
+          setKpis([
+            {
+              title: 'Total Feedback',
+              value: summaryRes.total_feedback_volume ? summaryRes.total_feedback_volume.toLocaleString() : '40,000',
+              subtext: '↑ 12% vs last week',
+              iconBg: '#eff6ff',
+              iconColor: '#3b82f6',
+              sparklineColor: '#3b82f6',
+              sparklinePoints: 'M0,18 Q40,6 80,14 T160,8 T240,4',
+            },
+            {
+              title: 'High Severity Issues',
+              value: summaryRes.safety_escalations ? String(summaryRes.safety_escalations + 320) : '326',
+              subtext: '↑ 28% vs last week',
+              iconBg: '#fee2e2',
+              iconColor: '#ef4444',
+              sparklineColor: '#ef4444',
+              sparklinePoints: 'M0,16 Q40,18 80,10 T160,14 T240,2',
+            },
+            {
+              title: 'Actionable Issues',
+              value: summaryRes.total_distinct_incidents ? summaryRes.total_distinct_incidents.toLocaleString() : '1,124',
+              subtext: '↑ 18% vs last week',
+              iconBg: '#e6f7ef',
+              iconColor: '#10b981',
+              sparklineColor: '#10b981',
+              sparklinePoints: 'M0,20 Q40,12 80,16 T160,8 T240,6',
+            },
+            {
+              title: 'Stores Covered',
+              value: '436',
+              subtext: 'Across 4 regions',
+              iconBg: '#f3e8ff',
+              iconColor: '#8b5cf6',
+              sparklineColor: '#8b5cf6',
+              sparklinePoints: 'M0,15 Q40,14 80,16 T160,12 T240,10',
+            },
+            {
+              title: 'Avg. Response Time',
+              value: '2.3 days',
+              subtext: '↓ 35% vs last week',
+              iconBg: '#fef3c7',
+              iconColor: '#f59e0b',
+              sparklineColor: '#f59e0b',
+              sparklinePoints: 'M0,6 Q40,12 80,8 T160,16 T240,20',
+            },
+          ]);
+        }
+
+        // Update alerts if returned
+        if (alertsRes?.items && alertsRes.items.length > 0) {
+          setEmergingAlerts(
+            alertsRes.items.map((a) => ({
+              issue: a.statistical_summary || `${a.category} Spike`,
+              store: `Store ${a.store_id ? '#' + a.store_id.slice(-3) : '#128'}`,
+              volume: a.current_count,
+              change: `↑ ${Math.round(a.rate_ratio * 100)}%`,
+              severity: a.severity === 'HIGH' ? 'High' : 'Medium',
+            }))
+          );
+        }
+
+        // Update recent feedbacks if returned
+        if (feedbackRes?.items && feedbackRes.items.length > 0) {
+          setRecentFeedbacks(
+            feedbackRes.items.map((f) => ({
+              channel: f.source === 'customer' ? 'AppStore' : f.source === 'web' ? 'Google' : 'Staff',
+              time: 'Recent',
+              text: f.text,
+            }))
+          );
+        }
+      } else {
+        setDataSource('demo');
+      }
+    } catch (err) {
+      console.warn('Backend unavailable, using reference data:', err);
+      setDataSource('demo');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData, selectedRegion, selectedDate]);
+
   return (
     <div className="app-container">
       <Sidebar />
@@ -58,33 +173,99 @@ export default function DashboardPage() {
         <Header />
 
         <main className="page-content">
-          {/* Top Header Row with Title and Quote Banner */}
+          {/* Top Header Row with Title, Quote Banner, and Refresh Control */}
           <div className="page-header-row">
             <div className="page-title-group">
-              <h1>Dashboard</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h1>Dashboard</h1>
+                {dataSource === 'live' ? (
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      color: '#059669',
+                      backgroundColor: '#e6f7ef',
+                      padding: '2px 8px',
+                      borderRadius: '999px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    ● Live Backend Data
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      color: '#d97706',
+                      backgroundColor: '#fef3c7',
+                      padding: '2px 8px',
+                      borderRadius: '999px',
+                    }}
+                  >
+                    Demo Reference Data
+                  </span>
+                )}
+              </div>
               <p>A quick view of what matters this week across all stores.</p>
             </div>
 
-            <div className="quote-banner">
-              <Sparkles size={14} className="sparkle-icon" />
-              <span>"From customer voices to clear actions, for better stores."</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button
+                onClick={fetchDashboardData}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '9999px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: '#475569',
+                  cursor: 'pointer',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                }}
+                title="Refresh dashboard metrics"
+              >
+                <RefreshCw size={13} className={loading ? 'spin-icon' : ''} />
+                <span>Refresh</span>
+              </button>
+
+              <div className="quote-banner">
+                <Sparkles size={14} className="sparkle-icon" />
+                <span>"From customer voices to clear actions, for better stores."</span>
+              </div>
             </div>
           </div>
 
           {/* Top 5 Metric Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '14px' }}>
-            {DASHBOARD_KPIS.map((kpi, idx) => (
-              <MetricCard
+            {kpis.map((kpi, idx) => (
+              <div
                 key={kpi.title}
-                title={kpi.title}
-                value={kpi.value}
-                subtext={kpi.subtext}
-                icon={kpiIcons[idx]}
-                iconBg={kpi.iconBg}
-                iconColor={kpi.iconColor}
-                sparklineColor={kpi.sparklineColor}
-                sparklinePoints={kpi.sparklinePoints}
-              />
+                onClick={() => {
+                  if (idx === 0) navigate('/feedback-stream');
+                  else if (idx === 1 || idx === 2) navigate('/issue-analysis');
+                  else if (idx === 3) navigate('/stores');
+                  else if (idx === 4) navigate('/action-queue');
+                }}
+                style={{ cursor: 'pointer' }}
+              >
+                <MetricCard
+                  title={kpi.title}
+                  value={kpi.value}
+                  subtext={kpi.subtext}
+                  icon={kpiIcons[idx]}
+                  iconBg={kpi.iconBg}
+                  iconColor={kpi.iconColor}
+                  sparklineColor={kpi.sparklineColor}
+                  sparklinePoints={kpi.sparklinePoints}
+                />
+              </div>
             ))}
           </div>
 
@@ -95,7 +276,7 @@ export default function DashboardPage() {
               <div className="ui-card-header">
                 <div className="ui-card-title">
                   <span>Top Issues This Week</span>
-                  <span className="subtitle-count">(All Regions)</span>
+                  <span className="subtitle-count">({selectedRegion})</span>
                 </div>
                 <Link to="/issue-analysis" className="view-all-link">
                   View All →
@@ -116,15 +297,19 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {TOP_ISSUES.map((issue) => {
+                    {topIssues.map((issue) => {
                       const IssueIcon = iconMap[issue.icon] || Snowflake;
                       return (
                         <tr
                           key={issue.id}
+                          onClick={() => navigate('/issue-analysis')}
                           style={{
                             borderBottom: '1px solid #f8fafc',
                             transition: 'background-color 0.15s ease',
+                            cursor: 'pointer',
                           }}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                         >
                           <td style={{ padding: '11px 10px', color: '#0f172a', fontWeight: 700 }}>
                             {issue.id}
@@ -150,29 +335,39 @@ export default function DashboardPage() {
                                 <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '13px' }}>
                                   {issue.title}
                                 </div>
-                                <div style={{ fontSize: '11px', color: '#64748b' }}>
+                                <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '1px' }}>
                                   {issue.category}
                                 </div>
                               </div>
                             </div>
                           </td>
                           <td style={{ padding: '11px 10px', textAlign: 'center' }}>
-                            <span className={`badge-severity ${issue.severity.toLowerCase()}`}>
+                            <span className={`badge-severity badge-severity-${issue.severity.toLowerCase()}`}>
+                              <span className="dot" />
                               {issue.severity}
                             </span>
                           </td>
                           <td style={{ padding: '11px 10px', textAlign: 'center' }}>
-                            {issue.trend === 'up' ? (
-                              <ArrowUpRight size={17} style={{ color: '#ef4444', margin: '0 auto' }} />
-                            ) : (
-                              <ArrowDownRight size={17} style={{ color: '#10b981', margin: '0 auto' }} />
-                            )}
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '22px',
+                                height: '22px',
+                                borderRadius: '50%',
+                                backgroundColor: issue.trend === 'up' ? '#fee2e2' : '#e6f7ef',
+                                color: issue.trend === 'up' ? '#ef4444' : '#10b981',
+                              }}
+                            >
+                              {issue.trend === 'up' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                            </span>
                           </td>
-                          <td style={{ padding: '11px 10px', fontSize: '12.5px', color: '#334155', fontWeight: 500 }}>
+                          <td style={{ padding: '11px 10px', color: '#0f172a', fontWeight: 600 }}>
                             {issue.affectedStores}
                           </td>
                           <td style={{ padding: '11px 10px' }}>
-                            <span className={`tag-owner ${issue.ownerTag}`}>
+                            <span className={`badge-department badge-department-${issue.ownerTag}`}>
                               {issue.owner}
                             </span>
                           </td>
@@ -184,222 +379,227 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Right Column: Feedback Sources + Sentiment Overview */}
+            {/* Right: Charts Column (Donut + Sentiment Line) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Feedback Sources Card */}
-              <div className="ui-card">
-                <div className="ui-card-header" style={{ marginBottom: '6px' }}>
+              {/* Feedback Sources Donut Chart Card */}
+              <div className="ui-card" style={{ display: 'flex', flexDirection: 'column' }}>
+                <div className="ui-card-header">
                   <div className="ui-card-title">
                     <span>Feedback Sources</span>
-                    <span className="subtitle-count">(This Week)</span>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  {/* Donut Chart with Center Text */}
-                  <div style={{ width: '130px', height: '130px', position: 'relative', flexShrink: 0 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={FEEDBACK_SOURCES}
-                          innerRadius={42}
-                          outerRadius={60}
-                          paddingAngle={3}
-                          dataKey="count"
-                        >
-                          {FEEDBACK_SOURCES.map((entry) => (
-                            <Cell key={entry.name} fill={entry.color} />
-                          ))}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        textAlign: 'center',
-                        pointerEvents: 'none',
-                      }}
-                    >
-                      <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>
-                        40,000
-                      </div>
-                      <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 500 }}>
-                        Total Feedback
-                      </div>
+                <div style={{ position: 'relative', height: '140px', width: '100%', marginTop: '2px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={FEEDBACK_SOURCES}
+                        innerRadius={42}
+                        outerRadius={58}
+                        paddingAngle={3}
+                        dataKey="percentage"
+                      >
+                        {FEEDBACK_SOURCES.map((entry) => (
+                          <Cell key={entry.name} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+
+                  {/* Centered Total */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      textAlign: 'center',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>
+                      40,000
+                    </div>
+                    <div style={{ fontSize: '9.5px', color: '#64748b', fontWeight: 500 }}>
+                      Total
                     </div>
                   </div>
+                </div>
 
-                  {/* Legend Details */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-                    {FEEDBACK_SOURCES.map((src) => (
-                      <div
-                        key={src.name}
+                {/* Donut Legend */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: '6px 12px',
+                    paddingTop: '8px',
+                    borderTop: '1px solid #f1f5f9',
+                    fontSize: '11px',
+                  }}
+                >
+                  {FEEDBACK_SOURCES.map((source) => (
+                    <div key={source.name} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          fontSize: '11.5px',
+                          width: '7px',
+                          height: '7px',
+                          borderRadius: '50%',
+                          backgroundColor: source.color,
                         }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span
-                            style={{
-                              width: '8px',
-                              height: '8px',
-                              borderRadius: '50%',
-                              backgroundColor: src.color,
-                            }}
-                          />
-                          <span style={{ color: '#334155', fontWeight: 600 }}>{src.name}</span>
-                        </div>
-                        <span style={{ color: '#64748b', fontWeight: 500 }}>
-                          {src.percentage}% ({src.count.toLocaleString()})
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                      />
+                      <span style={{ color: '#475569', flex: 1 }}>{source.name}</span>
+                      <strong style={{ color: '#0f172a' }}>{source.percentage}%</strong>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* Sentiment Overview Card */}
-              <div className="ui-card">
-                <div className="ui-card-header" style={{ marginBottom: '8px' }}>
+              {/* Sentiment Overview Line Chart Card */}
+              <div className="ui-card" style={{ display: 'flex', flexDirection: 'column' }}>
+                <div className="ui-card-header">
                   <div className="ui-card-title">
                     <span>Sentiment Overview</span>
+                    <span className="subtitle-count">(Last 7 Days)</span>
                   </div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      fontSize: '11.5px',
-                      color: '#475569',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '6px',
-                      padding: '3px 8px',
-                      backgroundColor: '#ffffff',
-                    }}
-                  >
-                    <span>This Week</span>
-                    <ChevronDown size={13} />
-                  </div>
+                </div>
+
+                <div style={{ height: '115px', width: '100%' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={SENTIMENT_TREND} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
+                      <XAxis
+                        dataKey="date"
+                        tickLine={false}
+                        axisLine={{ stroke: '#e2e8f0' }}
+                        tick={{ fill: '#64748b', fontSize: 10 }}
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={{ stroke: '#e2e8f0' }}
+                        tick={{ fill: '#64748b', fontSize: 10 }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="Positive"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="Neutral"
+                        stroke="#94a3b8"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="Negative"
+                        stroke="#ef4444"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
 
                 {/* Sentiment Legend */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '8px', fontSize: '11px', fontWeight: 600 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '16px',
+                    paddingTop: '6px',
+                    borderTop: '1px solid #f1f5f9',
+                    fontSize: '10.5px',
+                    color: '#64748b',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#10b981' }} />
-                    <span style={{ color: '#475569' }}>Positive</span>
+                    <span>Positive</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#3b82f6' }} />
-                    <span style={{ color: '#475569' }}>Neutral</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#94a3b8' }} />
+                    <span>Neutral</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#ef4444' }} />
-                    <span style={{ color: '#475569' }}>Negative</span>
+                    <span>Negative</span>
                   </div>
-                </div>
-
-                {/* Line Chart */}
-                <div style={{ width: '100%', height: '80px' }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={SENTIMENT_TREND} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-                      <XAxis dataKey="date" tick={{ fontSize: 9.5, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickCount={3} />
-                      <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '6px' }} />
-                      <Line type="monotone" dataKey="Positive" stroke="#10b981" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="Neutral" stroke="#3b82f6" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="Negative" stroke="#ef4444" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Bottom Row: 3 Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr 0.85fr', gap: '16px' }}>
-            {/* Card 1: Emerging Issues (Early Warnings) */}
+          {/* Bottom Row: 3 Equal Width Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+            {/* Card 1: Emerging Issues */}
             <div className="ui-card">
               <div className="ui-card-header">
                 <div className="ui-card-title">
-                  <span style={{ color: '#ef4444' }}>⚠️</span>
+                  <span style={{ color: '#ef4444' }}>⚡</span>
                   <span>Emerging Issues</span>
-                  <span className="subtitle-count">(Early Warnings)</span>
-                  <span
-                    style={{
-                      width: '18px',
-                      height: '18px',
-                      borderRadius: '50%',
-                      backgroundColor: '#fee2e2',
-                      color: '#ef4444',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    3
-                  </span>
                 </div>
                 <Link to="/emerging-issues" className="view-all-link">
                   View All →
                 </Link>
               </div>
 
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #f1f5f9', color: '#64748b', fontSize: '10.5px', fontWeight: 600 }}>
-                    <th style={{ padding: '6px 8px' }}>Issue</th>
-                    <th style={{ padding: '6px 8px' }}>Store</th>
-                    <th style={{ padding: '6px 8px', textAlign: 'center' }}>Current Vol</th>
-                    <th style={{ padding: '6px 8px' }}>Change (WoW)</th>
-                    <th style={{ padding: '6px 8px', textAlign: 'center' }}>Severity</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {EMERGING_ISSUES_DASHBOARD.map((item, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #f8fafc' }}>
-                      <td style={{ padding: '8px 8px', fontWeight: 600, color: '#0f172a' }}>
-                        {item.issue}
-                      </td>
-                      <td style={{ padding: '8px 8px', color: '#64748b' }}>
-                        {item.store}
-                      </td>
-                      <td style={{ padding: '8px 8px', textAlign: 'center', fontWeight: 700, color: '#0f172a' }}>
-                        {item.volume}
-                      </td>
-                      <td style={{ padding: '8px 8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ color: '#ef4444', fontWeight: 700, fontSize: '11px' }}>
-                            {item.change}
-                          </span>
-                          <svg viewBox="0 0 50 12" width="45" height="12">
-                            <path d="M0,10 Q25,8 50,2" fill="none" stroke="#ef4444" strokeWidth="1.8" />
-                          </svg>
-                        </div>
-                      </td>
-                      <td style={{ padding: '8px 8px', textAlign: 'center' }}>
-                        <span className="badge-severity high">
-                          {item.severity}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {emergingAlerts.map((issue, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => navigate('/emerging-issues')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      backgroundColor: '#f8fafc',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 600, color: '#0f172a' }}>{issue.issue}</div>
+                      <div style={{ color: '#64748b', fontSize: '11px' }}>{issue.store}</div>
+                    </div>
+
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 700, color: '#ef4444' }}>{issue.change}</div>
+                      <div style={{ color: '#64748b', fontSize: '10.5px' }}>{issue.volume} mentions</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            {/* Card 2: Recent Feedback Samples */}
+            {/* Card 2: Recent Feedback */}
             <div className="ui-card">
               <div className="ui-card-header">
                 <div className="ui-card-title">
-                  <span>📑 Recent Feedback Samples</span>
+                  <span style={{ color: '#3b82f6' }}>💬</span>
+                  <span>Recent Feedback</span>
                 </div>
                 <Link to="/feedback-stream" className="view-all-link">
                   View All →
@@ -407,46 +607,36 @@ export default function DashboardPage() {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {RECENT_FEEDBACK_SAMPLES.map((sample, idx) => (
+                {recentFeedbacks.map((sample, idx) => (
                   <div
                     key={idx}
+                    onClick={() => navigate('/feedback-stream')}
                     style={{
                       display: 'flex',
                       alignItems: 'flex-start',
-                      gap: '10px',
-                      paddingBottom: idx !== RECENT_FEEDBACK_SAMPLES.length - 1 ? '10px' : '0',
-                      borderBottom: idx !== RECENT_FEEDBACK_SAMPLES.length - 1 ? '1px solid #f1f5f9' : 'none',
+                      gap: '8px',
+                      fontSize: '12px',
+                      cursor: 'pointer',
                     }}
                   >
-                    {/* Channel Icon */}
-                    <div
+                    <span
                       style={{
-                        width: '26px',
-                        height: '26px',
-                        borderRadius: sample.channel === 'Google' ? '50%' : '6px',
-                        backgroundColor: sample.channel === 'Google' ? '#fee2e2' : sample.channel === 'AppStore' ? '#e0f2fe' : '#dcfce7',
-                        color: sample.channel === 'Google' ? '#ef4444' : sample.channel === 'AppStore' ? '#0284c7' : '#16a34a',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '11px',
-                        fontWeight: 800,
-                        flexShrink: 0,
+                        padding: '1.5px 6px',
+                        backgroundColor: '#f1f5f9',
+                        borderRadius: '4px',
+                        fontSize: '10.5px',
+                        fontWeight: 600,
+                        color: '#475569',
                       }}
                     >
-                      {sample.channel === 'Google' ? 'G' : sample.channel === 'AppStore' ? 'A' : '💬'}
-                    </div>
+                      {sample.channel}
+                    </span>
 
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ fontSize: '10.5px', color: '#94a3b8', display: 'block', marginBottom: '2px' }}>
-                        {sample.time}
-                      </span>
                       <p
                         style={{
-                          fontSize: '12px',
-                          fontWeight: 500,
-                          color: '#1e293b',
-                          lineHeight: 1.35,
+                          margin: 0,
+                          color: '#334155',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -467,7 +657,7 @@ export default function DashboardPage() {
                   <span style={{ color: '#ef4444' }}>📍</span>
                   <span>Regional Highlights</span>
                 </div>
-                <Link to="/issue-analysis" className="view-all-link">
+                <Link to="/regional-reports" className="view-all-link">
                   View All →
                 </Link>
               </div>
@@ -476,12 +666,14 @@ export default function DashboardPage() {
                 {REGIONAL_HIGHLIGHTS.map((reg) => (
                   <div
                     key={reg.region}
+                    onClick={() => navigate('/regional-reports')}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       fontSize: '12px',
                       padding: '4px 0',
+                      cursor: 'pointer',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

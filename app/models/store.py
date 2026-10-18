@@ -20,6 +20,7 @@ class Store(Base):
     address = Column(String(255), nullable=True)
     city = Column(String(100), nullable=True)
     state = Column(String(50), nullable=True)
+    region = Column(String(50), nullable=True, index=True)
     size_sqft = Column(Float, nullable=False, default=10000.0)
     avg_daily_transactions = Column(Float, nullable=False, default=1500.0)
     is_active = Column(Boolean, nullable=False, default=True)

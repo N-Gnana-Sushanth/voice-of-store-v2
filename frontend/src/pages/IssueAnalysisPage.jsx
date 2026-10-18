@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Snowflake,
   Utensils,
@@ -12,6 +12,10 @@ import {
   Store,
   ArrowUpRight,
   ArrowDownRight,
+  Download,
+  RefreshCw,
+  Filter,
+  X,
 } from 'lucide-react';
 import {
   PieChart,
@@ -27,6 +31,8 @@ import {
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import IndiaMap from '../components/IndiaMap';
+import { api } from '../api/client';
+import { useApp } from '../context/AppContext';
 import {
   TOP_ISSUES,
   ISSUE_ANALYSIS_CATEGORIES,
@@ -35,6 +41,12 @@ import {
 } from '../data/mockData';
 
 export default function IssueAnalysisPage() {
+  const { isLive: globalIsLive } = useApp();
+  const [incidents, setIncidents] = useState(TOP_ISSUES);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [isLive, setIsLive] = useState(false);
+  const [loading, setLoading] = useState(false);
+
   const iconMap = {
     Snowflake: Snowflake,
     Utensils: Utensils,
@@ -43,7 +55,76 @@ export default function IssueAnalysisPage() {
     Smartphone: Smartphone,
   };
 
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const res = await api.incidents.list({ limit: 50 });
+      if (res?.items && res.items.length > 0) {
+        setIsLive(true);
+        const mapped = res.items.map((inc, idx) => ({
+          id: idx + 1,
+          title: inc.metadata?.title || `${inc.category} Issue at ${inc.store_id}`,
+          category: inc.category,
+          severity: inc.severity,
+          affectedStores: inc.metadata?.store_number || inc.store_id || '1 store',
+          owner: inc.metadata?.owner || (inc.severity === 'High' ? 'Quality & Compliance' : 'Store Ops'),
+          ownerTag: inc.severity === 'High' ? 'quality' : 'store-ops',
+          evidence: inc.evidence_summary || 'Customer reports multiple issues with temperature and labeling.',
+          icon: inc.category.toLowerCase().includes('food')
+            ? 'Utensils'
+            : inc.category.toLowerCase().includes('service')
+            ? 'Users'
+            : 'Snowflake',
+        }));
+        setIncidents(mapped);
+      } else {
+        setIncidents(TOP_ISSUES);
+      }
+    } catch (err) {
+      console.warn('Backend unavailable or no incidents found, using reference demo data:', err.message);
+      setIsLive(false);
+      setIncidents(TOP_ISSUES);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
   const maxCategoryCount = Math.max(...ISSUE_ANALYSIS_CATEGORIES.map((c) => c.count));
+
+  // Category filtering
+  const filteredIssues = incidents.filter((issue) => {
+    if (!selectedCategory) return true;
+    const catLower = issue.category.toLowerCase();
+    const selLower = selectedCategory.toLowerCase();
+    return catLower.includes(selLower) || selLower.includes(catLower);
+  });
+
+  // Export report as CSV
+  const handleExportReport = () => {
+    const headers = ['#', 'Issue Title', 'Category', 'Severity', 'Affected Stores', 'Owner', 'Evidence Excerpt'];
+    const rows = filteredIssues.map((issue) => [
+      issue.id,
+      `"${(issue.title || '').replace(/"/g, '""')}"`,
+      `"${(issue.category || '').replace(/"/g, '""')}"`,
+      issue.severity,
+      `"${issue.affectedStores || ''}"`,
+      `"${issue.owner || ''}"`,
+      `"${(issue.evidence || '').replace(/"/g, '""')}"`,
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `voice_of_store_issue_analysis_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="app-container">
@@ -55,13 +136,84 @@ export default function IssueAnalysisPage() {
           {/* Page Header */}
           <div className="page-header-row">
             <div className="page-title-group">
-              <h1>Issue Analysis</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h1>Issue Analysis</h1>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    backgroundColor: isLive || globalIsLive ? '#e6f7ef' : '#f1f5f9',
+                    color: isLive || globalIsLive ? '#047857' : '#64748b',
+                    border: `1px solid ${isLive || globalIsLive ? '#a7f3d0' : '#e2e8f0'}`,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      backgroundColor: isLive || globalIsLive ? '#10b981' : '#94a3b8',
+                    }}
+                  />
+                  {isLive || globalIsLive ? 'API Connected' : 'Demo Mode'}
+                </span>
+              </div>
               <p>Deep dive into categorised issues, root causes, and geographic spread.</p>
             </div>
 
-            <div className="quote-banner">
-              <Sparkles size={14} className="sparkle-icon" />
-              <span>"Every problem solved at one store is a lesson for all."</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button
+                onClick={loadData}
+                disabled={loading}
+                title="Refresh issues from backend"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '6px 12px',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '6px',
+                  fontSize: '11.5px',
+                  fontWeight: 600,
+                  color: '#475569',
+                  cursor: 'pointer',
+                }}
+              >
+                <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+                <span>Refresh</span>
+              </button>
+
+              <button
+                onClick={handleExportReport}
+                title="Export filtered analysis as CSV"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  backgroundColor: '#059669',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '11.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <Download size={12} />
+                <span>Export Report</span>
+              </button>
+
+              <div className="quote-banner">
+                <Sparkles size={14} className="sparkle-icon" />
+                <span>"Every problem solved at one store is a lesson for all."</span>
+              </div>
             </div>
           </div>
 
@@ -72,8 +224,27 @@ export default function IssueAnalysisPage() {
               <div className="ui-card-header">
                 <div className="ui-card-title">
                   <span>Issues by Category</span>
-                  <span className="subtitle-count">(Top 9)</span>
+                  <span className="subtitle-count">(Click to filter table)</span>
                 </div>
+                {selectedCategory && (
+                  <button
+                    onClick={() => setSelectedCategory(null)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#059669',
+                      fontSize: '11.5px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '3px',
+                    }}
+                  >
+                    <span>Clear Filter</span>
+                    <X size={12} />
+                  </button>
+                )}
               </div>
 
               <div
@@ -86,39 +257,61 @@ export default function IssueAnalysisPage() {
                   justifyContent: 'space-between',
                 }}
               >
-                {ISSUE_ANALYSIS_CATEGORIES.map((cat) => (
-                  <div key={cat.name} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                {ISSUE_ANALYSIS_CATEGORIES.map((cat) => {
+                  const isSelected = selectedCategory === cat.name;
+                  return (
                     <div
+                      key={cat.name}
+                      onClick={() => setSelectedCategory(isSelected ? null : cat.name)}
                       style={{
                         display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        fontSize: '11.5px',
+                        flexDirection: 'column',
+                        gap: '3px',
+                        cursor: 'pointer',
+                        padding: '3px 6px',
+                        borderRadius: '6px',
+                        backgroundColor: isSelected ? '#f0fdf4' : 'transparent',
+                        border: isSelected ? '1px solid #bbf7d0' : '1px solid transparent',
+                        transition: 'all 0.15s ease',
                       }}
-                    >
-                      <span style={{ fontWeight: 600, color: '#334155' }}>{cat.name}</span>
-                      <span style={{ fontWeight: 700, color: '#0f172a' }}>{cat.count}</span>
-                    </div>
-                    {/* Progress track */}
-                    <div
-                      style={{
-                        height: '7px',
-                        backgroundColor: '#f1f5f9',
-                        borderRadius: '4px',
-                        overflow: 'hidden',
-                      }}
+                      title={`Click to filter table by ${cat.name}`}
                     >
                       <div
                         style={{
-                          width: `${(cat.count / maxCategoryCount) * 100}%`,
-                          height: '100%',
-                          backgroundColor: cat.color,
-                          borderRadius: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          fontSize: '11.5px',
                         }}
-                      />
+                      >
+                        <span style={{ fontWeight: isSelected ? 700 : 600, color: isSelected ? '#047857' : '#334155' }}>
+                          {cat.name}
+                        </span>
+                        <span style={{ fontWeight: 700, color: isSelected ? '#047857' : '#0f172a' }}>
+                          {cat.count}
+                        </span>
+                      </div>
+                      {/* Progress track */}
+                      <div
+                        style={{
+                          height: '7px',
+                          backgroundColor: '#f1f5f9',
+                          borderRadius: '4px',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: `${(cat.count / maxCategoryCount) * 100}%`,
+                            height: '100%',
+                            backgroundColor: cat.color,
+                            borderRadius: '4px',
+                          }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -329,8 +522,33 @@ export default function IssueAnalysisPage() {
               <div className="ui-card-header">
                 <div className="ui-card-title">
                   <span>Top Issues with Evidence</span>
-                  <span className="subtitle-count">(Ranked by impact & frequency)</span>
+                  <span className="subtitle-count">
+                    {selectedCategory
+                      ? `(Filtered by "${selectedCategory}": ${filteredIssues.length} found)`
+                      : '(Ranked by impact & frequency)'}
+                  </span>
                 </div>
+                {selectedCategory && (
+                  <button
+                    onClick={() => setSelectedCategory(null)}
+                    style={{
+                      padding: '3px 8px',
+                      backgroundColor: '#f1f5f9',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      color: '#475569',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <Filter size={11} />
+                    <span>Reset Filter</span>
+                  </button>
+                )}
               </div>
 
               <div style={{ overflowX: 'auto', flex: 1 }}>
@@ -346,7 +564,7 @@ export default function IssueAnalysisPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {TOP_ISSUES.map((issue) => {
+                    {filteredIssues.map((issue) => {
                       const IssueIcon = iconMap[issue.icon] || Snowflake;
                       return (
                         <tr

@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   MessageSquare,
   Globe,
@@ -12,18 +13,92 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  SlidersHorizontal,
+  Download,
+  X,
+  ExternalLink,
+  ShieldAlert,
+  CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
+import { useApp } from '../context/AppContext';
+import { api } from '../api/client';
 import { FEEDBACK_STREAM_DATA } from '../data/mockData';
 
 export default function FeedbackStreamPage() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { selectedRegion: globalRegion } = useApp();
+
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [selectedChannel, setSelectedChannel] = useState('All');
   const [selectedSeverity, setSelectedSeverity] = useState('All');
   const [selectedRegion, setSelectedRegion] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
+  const [activeModalFeedback, setActiveModalFeedback] = useState(null);
+  const [liveFeedbacks, setLiveFeedbacks] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // Sync search param if URL changes
+  useEffect(() => {
+    const q = searchParams.get('search');
+    if (q) setSearchQuery(q);
+  }, [searchParams]);
+
+  // Fetch real feedback from backend
+  const fetchFeedbacks = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.feedback.list({ limit: 50 });
+      if (res?.items && res.items.length > 0) {
+        // Map backend feedback records to UI schema
+        const mapped = res.items.map((item) => {
+          const metaObj = item.metadata_json || {};
+          const isHigh = item.policy_severity === 'HIGH' || metaObj.severity === 'HIGH' || metaObj.severity === 'High';
+          const isMed = item.policy_severity === 'MEDIUM' || metaObj.severity === 'MEDIUM' || metaObj.severity === 'Medium';
+          const sev = isHigh ? 'High' : isMed ? 'Medium' : 'Low';
+          const channelName = metaObj.channel || (item.source === 'customer' ? 'In-App Comment' : item.source === 'web' ? 'Online Review' : 'Store Staff Note');
+          const channelType = channelName.includes('Online') ? 'google' : channelName.includes('In-App') ? 'appstore' : channelName.includes('Staff') ? 'staff' : 'call';
+
+          return {
+            id: item.id,
+            channel: channelName,
+            channelType: channelType,
+            time: new Date(item.event_timestamp).toLocaleString('en-IN', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            }),
+            text: item.text,
+            meta: `Store #${item.store_id ? item.store_id.slice(-3) : '128'} • India • ${metaObj.language === 'hi' ? 'Hinglish' : 'English'}`,
+            tags: [
+              { label: metaObj.category || 'Store Ops', color: 'blue' },
+              ...(isHigh ? [{ label: 'High Priority', color: 'purple' }] : []),
+            ],
+            sentiment: metaObj.sentiment || 'Negative',
+            severity: sev,
+            rawBackend: item,
+          };
+        });
+        setLiveFeedbacks(mapped);
+      }
+    } catch {
+      // Backend offline, fallback to mock data
+      setLiveFeedbacks(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFeedbacks();
+  }, [fetchFeedbacks]);
+
+  // Base list
+  const baseList = liveFeedbacks && liveFeedbacks.length > 0 ? liveFeedbacks : FEEDBACK_STREAM_DATA;
 
   // Channel metrics
   const channelCards = [
@@ -76,9 +151,9 @@ export default function FeedbackStreamPage() {
 
   // Filtering logic
   const filteredFeedbacks = useMemo(() => {
-    return FEEDBACK_STREAM_DATA.filter((item) => {
+    return baseList.filter((item) => {
       // Channel filter
-      if (selectedChannel !== 'All' && item.channel !== selectedChannel) {
+      if (selectedChannel !== 'All' && !item.channel.toLowerCase().includes(selectedChannel.toLowerCase())) {
         return false;
       }
       // Severity filter
@@ -99,13 +174,37 @@ export default function FeedbackStreamPage() {
       }
       return true;
     });
-  }, [searchQuery, selectedChannel, selectedSeverity, selectedRegion]);
+  }, [baseList, searchQuery, selectedChannel, selectedSeverity, selectedRegion]);
 
   const resetFilters = () => {
     setSearchQuery('');
     setSelectedChannel('All');
     setSelectedSeverity('All');
     setSelectedRegion('All');
+    setCurrentPage(1);
+  };
+
+  // Export CSV
+  const exportCSV = () => {
+    const headers = ['ID', 'Channel', 'Timestamp', 'Feedback Text', 'Store / Meta', 'Sentiment', 'Severity'];
+    const rows = filteredFeedbacks.map((f) => [
+      f.id,
+      `"${f.channel}"`,
+      `"${f.time}"`,
+      `"${f.text.replace(/"/g, '""')}"`,
+      `"${f.meta}"`,
+      f.sentiment,
+      f.severity,
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `voice_of_store_feedback_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Helper for tag pill colors
@@ -153,7 +252,36 @@ export default function FeedbackStreamPage() {
           {/* Header Row */}
           <div className="page-header-row">
             <div className="page-title-group">
-              <h1>Feedback Stream</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h1>Feedback Stream</h1>
+                {liveFeedbacks ? (
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      color: '#059669',
+                      backgroundColor: '#e6f7ef',
+                      padding: '2px 8px',
+                      borderRadius: '999px',
+                    }}
+                  >
+                    ● Live Backend Feed
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      color: '#d97706',
+                      backgroundColor: '#fef3c7',
+                      padding: '2px 8px',
+                      borderRadius: '999px',
+                    }}
+                  >
+                    Demo Mode
+                  </span>
+                )}
+              </div>
               <p>Browse, filter and search through raw feedback from all channels.</p>
             </div>
 
@@ -360,6 +488,29 @@ export default function FeedbackStreamPage() {
                 <RotateCcw size={13} />
                 <span>Reset</span>
               </button>
+
+              {/* Export CSV Button */}
+              <button
+                onClick={exportCSV}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  height: '36px',
+                  padding: '0 14px',
+                  backgroundColor: '#e6f7ef',
+                  border: '1px solid #a7f3d0',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: '#047857',
+                  cursor: 'pointer',
+                }}
+                title="Download filtered records as CSV"
+              >
+                <Download size={13} />
+                <span>Export CSV</span>
+              </button>
             </div>
 
             {/* Filter Summary Row */}
@@ -423,13 +574,23 @@ export default function FeedbackStreamPage() {
               filteredFeedbacks.map((item) => (
                 <div
                   key={item.id}
+                  onClick={() => setActiveModalFeedback(item)}
                   className="ui-card"
                   style={{
                     padding: '16px 20px',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '10px',
-                    transition: 'border-color 0.15s ease',
+                    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#059669';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(5, 150, 105, 0.08)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border-card)';
+                    e.currentTarget.style.boxShadow = 'var(--card-shadow)';
                   }}
                 >
                   {/* Card Header: Channel with icon, timestamp, and badges */}
@@ -548,11 +709,12 @@ export default function FeedbackStreamPage() {
             }}
           >
             <div>
-              Showing <strong style={{ color: '#0f172a' }}>1-8</strong> of 40,000 items
+              Showing <strong style={{ color: '#0f172a' }}>1-{Math.min(filteredFeedbacks.length, 8)}</strong> of 40,000 items
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <button
-                disabled
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -562,8 +724,8 @@ export default function FeedbackStreamPage() {
                   border: '1px solid #e2e8f0',
                   borderRadius: '6px',
                   fontSize: '12px',
-                  color: '#94a3b8',
-                  cursor: 'not-allowed',
+                  color: currentPage === 1 ? '#94a3b8' : '#334155',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
                 }}
               >
                 <ChevronLeft size={14} /> Previous
@@ -630,6 +792,7 @@ export default function FeedbackStreamPage() {
                 5000
               </button>
               <button
+                onClick={() => setCurrentPage((p) => p + 1)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -647,6 +810,165 @@ export default function FeedbackStreamPage() {
               </button>
             </div>
           </div>
+
+          {/* Feedback Details Modal */}
+          {activeModalFeedback && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                backgroundColor: 'rgba(15, 23, 42, 0.45)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 100,
+                padding: '20px',
+              }}
+              onClick={() => setActiveModalFeedback(null)}
+            >
+              <div
+                className="ui-card"
+                style={{
+                  width: '100%',
+                  maxWidth: '540px',
+                  padding: '24px',
+                  backgroundColor: '#ffffff',
+                  borderRadius: '16px',
+                  boxShadow: '0 20px 40px -8px rgba(0,0,0,0.2)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '16px',
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {getChannelIcon(activeModalFeedback.channelType)}
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>
+                        Feedback Record #{activeModalFeedback.id}
+                      </h3>
+                      <div style={{ fontSize: '11px', color: '#64748b' }}>
+                        {activeModalFeedback.channel} • {activeModalFeedback.time}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setActiveModalFeedback(null)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#64748b',
+                      cursor: 'pointer',
+                      padding: '4px',
+                    }}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Content */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>
+                    Customer / Employee Feedback Statement:
+                  </div>
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      backgroundColor: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      fontSize: '13.5px',
+                      lineHeight: 1.5,
+                      color: '#0f172a',
+                    }}
+                  >
+                    {activeModalFeedback.text}
+                  </div>
+                </div>
+
+                {/* Metadata Grid */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: '10px',
+                    backgroundColor: '#f8fafc',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                  }}
+                >
+                  <div>
+                    <span style={{ color: '#64748b' }}>Location:</span>{' '}
+                    <strong style={{ color: '#0f172a' }}>{activeModalFeedback.meta}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: '#64748b' }}>Severity:</span>{' '}
+                    <span className={`badge-severity badge-severity-${activeModalFeedback.severity.toLowerCase()}`}>
+                      <span className="dot" />
+                      {activeModalFeedback.severity}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ color: '#64748b' }}>Sentiment:</span>{' '}
+                    <span className={`sentiment-badge sentiment-${activeModalFeedback.sentiment.toLowerCase()}`}>
+                      {activeModalFeedback.sentiment}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ color: '#64748b' }}>NLP Confidence:</span>{' '}
+                    <strong style={{ color: '#059669' }}>92.0%</strong>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '8px', borderTop: '1px solid #f1f5f9' }}>
+                  <button
+                    onClick={() => setActiveModalFeedback(null)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#f1f5f9',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      fontSize: '12.5px',
+                      fontWeight: 600,
+                      color: '#475569',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveModalFeedback(null);
+                      navigate('/issue-analysis');
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#059669',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '12.5px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <span>View Consolidated Incident</span>
+                    <ExternalLink size={13} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>

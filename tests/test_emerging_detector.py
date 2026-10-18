@@ -99,3 +99,27 @@ def test_detect_spike_and_duplicate_suppression(db: Session, test_stores: list[S
     # Database should only contain 1 alert row for this store and category
     total_db_alerts = db.query(Alert).filter(Alert.store_id == store.id, Alert.category == IncidentCategory.BILLING_PAYMENTS).count()
     assert total_db_alerts == 1
+
+
+def test_change_detection_strategies_comparison():
+    """Verify EWMA, CUSUM, and Bayesian Poisson-Gamma strategies on normal vs surge counts."""
+    from app.services.emerging_detector import (
+        PoissonGammaStrategy,
+        EWMAStrategy,
+        CUSUMStrategy,
+        compare_detection_strategies,
+    )
+
+    # Normal count: 1 observed when 1.0 expected
+    normal_res = compare_detection_strategies(current_count=1, expected_count=1.0)
+    assert normal_res["poisson_gamma"]["is_alert"] is False
+    assert normal_res["ewma"]["is_alert"] is False
+    assert normal_res["cusum"]["is_alert"] is False
+    assert normal_res["consensus_alert"] is False
+
+    # Surge count: 6 observed when 1.0 expected
+    surge_res = compare_detection_strategies(current_count=6, expected_count=1.0)
+    assert surge_res["poisson_gamma"]["is_alert"] is True
+    assert surge_res["ewma"]["is_alert"] is True
+    assert surge_res["cusum"]["is_alert"] is True
+    assert surge_res["consensus_alert"] is True

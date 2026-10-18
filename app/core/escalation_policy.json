@@ -1,0 +1,86 @@
+{
+  "version": "2.0.0-audited",
+  "policy_name": "Voice of Store Enterprise Severity Escalation Matrix",
+  "last_updated": "2026-10-18T00:00:00Z",
+  "governing_body": "Retail Safety, Operations & Compliance Council",
+  "principles": {
+    "separation_of_concerns": "Severity reflects operational and safety risk; sentiment reflects customer emotion; actionability reflects whether specific investigative details are present.",
+    "deterministic_override": "Mandatory safety and allergen criteria strictly override machine-learning confidence and sentiment scores.",
+    "traceability": "All escalation events preserve policy version, trigger rules, matched textual evidence, and audit logs."
+  },
+  "levels": {
+    "CRITICAL": {
+      "level": "CRITICAL",
+      "definition": "Imminent threat to human life, active physical injury, anaphylactic allergic reaction, structural failure, or biological contamination.",
+      "qualifying_conditions": [
+        "Anaphylactic allergic reaction or EpiPen emergency deployment",
+        "Slip-and-fall resulting in fractures, bleeding, or emergency medical response",
+        "Active fire, dense smoke, gas leak, or exposed high-voltage wiring",
+        "Rodent, rat, or biological pest infestation on active food-preparation surfaces",
+        "Credible physical threat, weapon display, or violent altercation in store"
+      ],
+      "mandatory_override": true,
+      "volume_threshold": 1,
+      "target_response_hours": 1,
+      "acknowledgment_window_minutes": 15,
+      "primary_owning_function": "Quality & Compliance",
+      "notification_targets": ["Store Manager", "Regional Operations Director", "VP of Compliance"],
+      "overdue_action": "Automated paging to HQ Crisis Incident Commander upon SLA breach.",
+      "closure_criteria": "Requires dual sign-off from Store Manager and HQ Compliance Officer with signed corrective action record."
+    },
+    "HIGH": {
+      "level": "HIGH",
+      "definition": "High-impact operational failure, allergen warning omissions, refrigeration temperature breaches, or gross staff misconduct.",
+      "qualifying_conditions": [
+        "Pre-packaged food item missing required statutory allergen warning label",
+        "Walk-in cooler or dairy freezer temperature breach (>4°C above target) threatening perishable inventory",
+        "Past best-before or expired dairy/meat inventory found on retail display",
+        "Unattended liquid spill or floor hazard in customer walkway without safety cones",
+        "Gross staff rudeness, abusive language, or verifiable cashier misconduct"
+      ],
+      "mandatory_override": false,
+      "volume_threshold": 2,
+      "target_response_hours": 4,
+      "acknowledgment_window_minutes": 60,
+      "primary_owning_function": "Store Ops",
+      "notification_targets": ["Store Assistant Manager", "Department Lead", "Area Operations Lead"],
+      "overdue_action": "Automatic escalation to Regional Operations Director at 75% SLA threshold.",
+      "closure_criteria": "Work order completion log or quarantine disposal manifest filed in Action Queue."
+    },
+    "MEDIUM": {
+      "level": "MEDIUM",
+      "definition": "Substandard operational condition, checkout delays, pricing label discrepancies, or non-critical app payment failures.",
+      "qualifying_conditions": [
+        "Card reader timeout or POS duplicate swipe error",
+        "Restroom sanitation issues, empty soap dispensers, or overflowing trash",
+        "Out of stock staple inventory or promotional flyer mismatch",
+        "Excessive checkout line delays (>10 minutes wait time during off-peak hours)"
+      ],
+      "mandatory_override": false,
+      "volume_threshold": 3,
+      "target_response_hours": 12,
+      "acknowledgment_window_minutes": 180,
+      "primary_owning_function": "Store Ops",
+      "notification_targets": ["Shift Supervisor", "Department Lead"],
+      "overdue_action": "Flagged on Daily Morning Operations Dashboard.",
+      "closure_criteria": "Shift supervisor resolution note in Action Queue."
+    },
+    "LOW": {
+      "level": "LOW",
+      "definition": "Minor convenience issues, shopping cart squeaks, cosmetic store fixtures, or general feedback.",
+      "qualifying_conditions": [
+        "Wobbly shopping cart wheels or basket handle defects",
+        "Parking lot bay paint fading or lighting suggestions",
+        "Background music volume or mobile app visual preferences"
+      ],
+      "mandatory_override": false,
+      "volume_threshold": 5,
+      "target_response_hours": 24,
+      "acknowledgment_window_minutes": 480,
+      "primary_owning_function": "Store Ops",
+      "notification_targets": ["Shift Supervisor"],
+      "overdue_action": "Included in weekly store batch review.",
+      "closure_criteria": "Closed during routine weekly maintenance sweep."
+    }
+  }
+}

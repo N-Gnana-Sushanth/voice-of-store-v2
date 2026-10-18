@@ -1,4 +1,4 @@
-"""Emerging-issue detection engine with statistical baselines and explainable alerts."""
+"""Emerging-issue detection engine with statistical baselines, small-volume Bayesian detection, and explainable alerts."""
 
 from datetime import datetime, timedelta, timezone
 import math
@@ -12,16 +12,33 @@ from app.models.incident import Incident, IncidentCategory, IncidentSeverity
 from app.models.store import Store
 
 
-class EmergingIssueDetector:
-    """Detects unusual increases in incident rates using historical and peer comparisons."""
+def compute_poisson_tail(k: int, lamb: float) -> float:
+    """Compute exact Poisson upper tail probability P(X >= k) for X ~ Poisson(lamb)."""
+    if k <= 0:
+        return 1.0
+    lamb = max(0.0001, lamb)
+    prob_less = 0.0
+    term = math.exp(-lamb)
+    prob_less += term
+    for i in range(1, k):
+        term *= (lamb / i)
+        prob_less += term
+    return max(0.0, min(1.0, 1.0 - prob_less))
 
-    BASELINE_VERSION = "v1.2.0-poisson-zscore"
+
+class EmergingIssueDetector:
+    """
+    Detects unusual increases in incident rates using Bayesian Poisson-Gamma,
+    historical moving baselines, and peer store comparisons without minimum-count suppression.
+    """
+
+    BASELINE_VERSION = "v2.0.0-poisson-gamma-bayesian"
 
     def __init__(
         self,
         observation_window_days: int = 7,
         baseline_window_days: int = 30,
-        min_current_count: int = 3,
+        min_current_count: int = 1,  # Removed arbitrary minimum-count restriction to allow small-volume signal detection
         rate_ratio_threshold: float = 2.0,
         z_score_threshold: float = 2.0,
     ):
@@ -150,7 +167,7 @@ class EmergingIssueDetector:
     ) -> List[Alert]:
         """
         Scan stores and categories for emerging issues as of a given timestamp.
-        Returns list of newly generated or updated active alerts.
+        Uses Bayesian Poisson-Gamma model and explicit small-volume testing.
         """
         if as_of_time is None:
             as_of_time = datetime.now(timezone.utc)
@@ -192,25 +209,39 @@ class EmergingIssueDetector:
                     for inc in current_incidents
                 )
 
-                # Low sample protection: skip if fewer than min count UNLESS urgent safety
+                # Skip completely inactive zero-count pairs without safety issues
                 if current_count < self.min_current_count and not has_safety_escalation:
                     continue
 
-                # 2. Retrieve baseline (leak-free: before obs_start)
+                # 2. Retrieve baseline (leak-free: strictly before obs_start)
                 baseline = self.calculate_or_get_baseline(db, store, category, as_of_time)
                 base_rate = float(baseline.normalized_rate)
 
-                # Calculate current rate
+                # Current normalized rate per 1,000 transactions
                 curr_rate = (current_count / current_exposure) * 1000.0
 
                 # Expected count based on historical baseline
                 expected_count = (base_rate / 1000.0) * current_exposure
-                expected_count = max(expected_count, 0.5)  # Avoid zero division
+                expected_count = max(expected_count, 0.2)  # Avoid zero division
 
                 rate_ratio = curr_rate / max(base_rate, 0.05)
 
                 # Poisson / Normal approximation Z-Score
                 z_score = (current_count - expected_count) / math.sqrt(expected_count)
+
+                # Bayesian Poisson-Gamma Model
+                # Prior: Gamma(alpha_0, beta_0)
+                alpha_0 = baseline.historical_incident_count + 0.5
+                beta_0 = (baseline.exposure_units / 1000.0) + 1.0
+                # Posterior: Gamma(alpha_post, beta_post)
+                alpha_post = alpha_0 + current_count
+                beta_post = beta_0 + (current_exposure / 1000.0)
+                posterior_mean_rate = alpha_post / beta_post
+                prior_mean_rate = alpha_0 / beta_0
+                bayesian_ratio = posterior_mean_rate / max(0.01, prior_mean_rate)
+
+                # Exact small-volume Poisson upper tail probability
+                poisson_p_value = compute_poisson_tail(current_count, expected_count)
 
                 # 3. Peer store comparison
                 peer_median = self.compute_peer_median_rate(
@@ -223,9 +254,15 @@ class EmergingIssueDetector:
                 confidence = 0.80
 
                 if has_safety_escalation:
+                    # Safety rule takes absolute priority regardless of volume or ML confidence
                     alert_type = AlertType.URGENT_SAFETY
                     severity = AlertSeverity.CRITICAL
-                    confidence = 0.95
+                    confidence = 0.99
+                elif current_count >= 2 and expected_count <= 2.0 and poisson_p_value <= 0.05 and bayesian_ratio >= 2.0:
+                    # Small-volume early whisper detection (e.g. rising from 0 to 2 or 3)
+                    alert_type = AlertType.SPIKE
+                    severity = AlertSeverity.HIGH if bayesian_ratio >= 3.0 else AlertSeverity.WARNING
+                    confidence = min(0.92, 0.75 + (bayesian_ratio * 0.05))
                 elif rate_ratio >= 3.0 and z_score >= 2.5:
                     alert_type = AlertType.SPIKE
                     severity = AlertSeverity.HIGH
@@ -250,6 +287,7 @@ class EmergingIssueDetector:
                     "category": category,
                     "alert_type": alert_type,
                     "detection_timestamp": as_of_time.isoformat(),
+                    "detector_version": self.BASELINE_VERSION,
                     "observation_window": {
                         "days": self.observation_window_days,
                         "start_utc": obs_start.isoformat(),
@@ -262,6 +300,9 @@ class EmergingIssueDetector:
                         "expected_count": round(expected_count, 2),
                         "rate_ratio": round(rate_ratio, 2),
                         "z_score": round(z_score, 2),
+                        "bayesian_posterior_rate": round(posterior_mean_rate, 4),
+                        "bayesian_ratio": round(bayesian_ratio, 2),
+                        "poisson_p_value": round(poisson_p_value, 4),
                         "exposure_volume": round(current_exposure, 1),
                         "exposure_unit": "transactions",
                     },
@@ -273,10 +314,12 @@ class EmergingIssueDetector:
                         "current_sample_size": current_count,
                         "baseline_sample_size": baseline.historical_incident_count,
                         "baseline_sample_met": baseline.min_sample_met,
+                        "insufficient_baseline_data": not baseline.min_sample_met,
                     },
                     "severity_rationale": (
-                        f"Incident rate ({curr_rate:.2f}/1k) is {rate_ratio:.1f}x higher than baseline ({base_rate:.2f}/1k) "
-                        f"with Z-score of {z_score:.2f} over {self.observation_window_days} days."
+                        f"Incident rate ({curr_rate:.2f}/1k) is {rate_ratio:.1f}x baseline ({base_rate:.2f}/1k) "
+                        f"[Bayesian ratio {bayesian_ratio:.1f}x, Z={z_score:.2f}, Poisson p={poisson_p_value:.3f}] "
+                        f"over {self.observation_window_days} days."
                     ),
                     "representative_incidents": [
                         {
@@ -314,7 +357,6 @@ class EmergingIssueDetector:
                     existing_alert.peer_comparison_json = evidence.get("peer_comparison")
                     existing_alert.last_detected_at = as_of_time
                     existing_alert.detection_count += 1
-                    # Escalate severity if new severity is higher
                     if severity == AlertSeverity.CRITICAL and existing_alert.severity != AlertSeverity.CRITICAL:
                         existing_alert.severity = AlertSeverity.CRITICAL
                     generated_alerts.append(existing_alert)
@@ -345,6 +387,140 @@ class EmergingIssueDetector:
 
         db.commit()
         return generated_alerts
+
+
+# ---------------------------------------------------------------------------
+# Statistical Change Detection Strategies (Poisson-Gamma, EWMA, CUSUM)
+# ---------------------------------------------------------------------------
+
+class BaseChangeDetector:
+    """Strategy interface for statistical change detection methods."""
+
+    def evaluate(self, current_count: int, expected_count: float, **kwargs) -> Dict[str, Any]:
+        raise NotImplementedError
+
+
+class PoissonGammaStrategy(BaseChangeDetector):
+    """Bayesian Poisson-Gamma change detector with exact small-volume Poisson tail."""
+
+    def evaluate(
+        self,
+        current_count: int,
+        expected_count: float,
+        prior_alpha: float = 0.5,
+        prior_beta: float = 1.0,
+        current_exposure: float = 1.0,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        exp = max(0.001, expected_count)
+        alpha_post = prior_alpha + current_count
+        beta_post = prior_beta + current_exposure
+        posterior_mean = alpha_post / beta_post
+        prior_mean = prior_alpha / prior_beta
+        ratio = posterior_mean / max(0.001, prior_mean)
+        p_val = compute_poisson_tail(current_count, exp)
+
+        is_alert = (current_count >= 2 and ratio >= 2.0 and p_val <= 0.05) or (current_count >= 4 and ratio >= 1.8)
+        return {
+            "method": "Poisson-Gamma (Bayesian)",
+            "is_alert": is_alert,
+            "statistic": round(ratio, 2),
+            "p_value": round(p_val, 4),
+            "posterior_mean_rate": round(posterior_mean, 4),
+            "rationale": f"Bayesian rate ratio {ratio:.2f}x with Poisson tail p={p_val:.4f}",
+        }
+
+
+class EWMAStrategy(BaseChangeDetector):
+    """Exponentially Weighted Moving Average change detector for smoothed trend shifts."""
+
+    def __init__(self, smoothing_factor: float = 0.2, control_limit_factor: float = 2.5):
+        self.smoothing = smoothing_factor  # lambda in [0.1, 0.3]
+        self.L = control_limit_factor      # typically 2.5 to 3.0
+
+    def evaluate(
+        self,
+        current_count: int,
+        expected_count: float,
+        baseline_std: Optional[float] = None,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        mu = max(0.2, expected_count)
+        sigma = baseline_std if (baseline_std and baseline_std > 0) else math.sqrt(mu)
+
+        # 1-step EWMA smoothing from baseline expectation
+        ewma_stat = (self.smoothing * current_count) + ((1.0 - self.smoothing) * mu)
+        std_ewma = sigma * math.sqrt(self.smoothing / (2.0 - self.smoothing))
+        ucl = mu + (self.L * std_ewma)
+
+        is_alert = ewma_stat > ucl and current_count >= 2
+        return {
+            "method": "EWMA (Exponentially Weighted Moving Average)",
+            "is_alert": is_alert,
+            "statistic": round(ewma_stat, 2),
+            "ucl": round(ucl, 2),
+            "baseline_mean": round(mu, 2),
+            "rationale": f"EWMA stat {ewma_stat:.2f} vs UCL {ucl:.2f} (L={self.L}, lambda={self.smoothing})",
+        }
+
+
+class CUSUMStrategy(BaseChangeDetector):
+    """Cumulative Sum (CUSUM) control chart for detecting persistent shifts."""
+
+    def __init__(self, allowance_k_factor: float = 0.5, decision_h_factor: float = 4.0):
+        self.k_factor = allowance_k_factor
+        self.h_factor = decision_h_factor
+
+    def evaluate(
+        self,
+        current_count: int,
+        expected_count: float,
+        baseline_std: Optional[float] = None,
+        previous_cusum: float = 0.0,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        mu = max(0.2, expected_count)
+        sigma = baseline_std if (baseline_std and baseline_std > 0) else math.sqrt(mu)
+
+        # Reference allowance k and decision threshold h
+        k = self.k_factor * sigma
+        h = self.h_factor * sigma
+
+        # Tabular one-sided upper CUSUM
+        s_t = max(0.0, previous_cusum + (current_count - (mu + k)))
+        is_alert = s_t > h and current_count >= 2
+
+        return {
+            "method": "CUSUM (Cumulative Sum)",
+            "is_alert": is_alert,
+            "statistic": round(s_t, 2),
+            "threshold_h": round(h, 2),
+            "reference_k": round(k, 2),
+            "rationale": f"CUSUM score {s_t:.2f} vs decision threshold h={h:.2f}",
+        }
+
+
+def compare_detection_strategies(
+    current_count: int,
+    expected_count: float,
+    baseline_std: Optional[float] = None,
+) -> Dict[str, Any]:
+    """
+    Run and compare all three statistical change detection methods:
+    Bayesian Poisson-Gamma, EWMA, and CUSUM.
+    """
+    pg = PoissonGammaStrategy().evaluate(current_count, expected_count)
+    ewma = EWMAStrategy().evaluate(current_count, expected_count, baseline_std=baseline_std)
+    cusum = CUSUMStrategy().evaluate(current_count, expected_count, baseline_std=baseline_std)
+
+    return {
+        "current_count": current_count,
+        "expected_count": expected_count,
+        "poisson_gamma": pg,
+        "ewma": ewma,
+        "cusum": cusum,
+        "consensus_alert": sum([pg["is_alert"], ewma["is_alert"], cusum["is_alert"]]) >= 2,
+    }
 
 
 # Singleton instance

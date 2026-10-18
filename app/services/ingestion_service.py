@@ -6,12 +6,14 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.exceptions import EntityNotFoundError, InvalidInputError
 from app.core.logging import logger
-from app.models.feedback import FeedbackRecord, FeedbackSource, ProcessingStatus
+from app.core.taxonomy import taxonomy_manager
+from app.models.feedback import FeedbackChannel, FeedbackRecord, FeedbackSource, ProcessingStatus
 from app.models.incident import (
     Incident,
     IncidentCategory,
     IncidentSeverity,
     IncidentStatus,
+    OwningFunction,
 )
 from app.models.store import Store
 from app.schemas.feedback import (
@@ -77,7 +79,7 @@ class IngestionService:
                 incident = db.query(Incident).filter(Incident.id == existing.incident_id).first() if existing.incident_id else None
                 return existing, incident, "DUPLICATE"
 
-        # 3. Determine timestamps
+        # 3. Determine timestamps and metadata
         event_time = submission.event_timestamp
         if event_time is None:
             event_time = datetime.now(timezone.utc)
@@ -86,11 +88,20 @@ class IngestionService:
         else:
             event_time = event_time.astimezone(timezone.utc)
 
+        lang = submission.language
+        if not lang:
+            lang = TextPreprocessor.detect_language(submission.text)
+
+        channel = submission.channel or FeedbackChannel.ONLINE_REVIEWS
+
         # 4. Create initial FeedbackRecord
         feedback = FeedbackRecord(
             store_id=store.id,
             text=submission.text,
             source=submission.source or FeedbackSource.CUSTOMER,
+            channel=channel,
+            rating=submission.rating,
+            language=lang,
             event_timestamp=event_time,
             ingestion_timestamp=datetime.now(timezone.utc),
             idempotency_key=submission.idempotency_key,
@@ -117,12 +128,13 @@ class IngestionService:
             model_ver = pred["model_version"]
 
             # 7. Deduplication & Incident Association
-            matched_incident, sim_score = deduplicator.find_duplicate_incident(
+            matched_incident, sim_score, match_explanation = deduplicator.find_duplicate_incident(
                 db=db,
                 store_id=store.id,
                 category=predicted_category,
                 text=cleaned_text,
                 event_timestamp=event_time,
+                channel=channel,
             )
 
             # 8. Deterministic Safety & Allergen Policy Evaluation
@@ -133,6 +145,12 @@ class IngestionService:
             )
 
             # 9. Persistence of Final Incident State
+            tax_cat = taxonomy_manager.get(predicted_category)
+            primary_owner = pred.get("primary_owner") or (tax_cat.primary_owner if tax_cat else OwningFunction.STORE_OPS)
+            secondary_owner = tax_cat.secondary_owner if tax_cat else None
+            actionability = pred.get("actionability_score", 0.85)
+            needs_review = pred.get("needs_human_review", False)
+
             if matched_incident:
                 incident = matched_incident
                 # Update times with timezone normalization
@@ -169,12 +187,22 @@ class IngestionService:
                 if SEVERITY_RANKS.get(new_sev, 2) > SEVERITY_RANKS.get(incident.severity, 2):
                     incident.severity = new_sev
 
+                # Propagate needs_human_review if new record flagged uncertainty
+                if needs_review and not incident.needs_human_review:
+                    incident.needs_human_review = True
+
                 # Link feedback
                 feedback.incident_id = incident.id
                 feedback.processing_status = ProcessingStatus.PROCESSED
             else:
                 # Create brand new incident
                 esc_reasons = "; ".join(policy_res["escalation_reasons"]) if policy_res["escalation_reasons"] else None
+                initial_history = [{
+                    "action": "INITIAL_AUTO_ROUTE",
+                    "owner": primary_owner,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "confidence": confidence,
+                }]
                 incident = Incident(
                     store_id=store.id,
                     category=predicted_category,
@@ -182,6 +210,11 @@ class IngestionService:
                     sentiment=sentiment,
                     sentiment_score=sentiment_score,
                     classification_confidence=confidence,
+                    actionability_score=actionability,
+                    primary_owner=primary_owner,
+                    secondary_owner=secondary_owner,
+                    needs_human_review=needs_review,
+                    routing_history=initial_history,
                     safety_flag=policy_res["safety_flag"],
                     allergen_flag=policy_res["allergen_flag"],
                     policy_escalated=policy_res["policy_escalated"],
@@ -192,10 +225,12 @@ class IngestionService:
                     feedback_count=1,
                     model_version=model_ver,
                     policy_version=policy_res["policy_version"],
-                    evidence_summary=cleaned_text[:500],
+                    evidence_summary=pred.get("evidence_span") or cleaned_text[:500],
                     metadata_json={
                         "initial_evidence": policy_res["matched_evidence"],
                         "all_probabilities": pred.get("all_probabilities", {}),
+                        "secondary_categories": pred.get("secondary_categories", []),
+                        "language": lang,
                     },
                 )
                 db.add(incident)
@@ -217,6 +252,9 @@ class IngestionService:
                     store_id=store.id,
                     text=submission.text,
                     source=submission.source or FeedbackSource.CUSTOMER,
+                    channel=channel,
+                    rating=submission.rating,
+                    language=lang,
                     event_timestamp=event_time,
                     ingestion_timestamp=datetime.now(timezone.utc),
                     idempotency_key=submission.idempotency_key,
