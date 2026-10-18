@@ -212,7 +212,7 @@ export default function DashboardPage() {
               <p>A quick view of what matters this week across all stores.</p>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div className="page-header-actions">
               <button
                 onClick={fetchDashboardData}
                 style={{
@@ -243,7 +243,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Top 5 Metric Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '14px' }}>
+          <div className="dashboard-kpi-grid">
             {kpis.map((kpi, idx) => (
               <div
                 key={kpi.title}
@@ -270,7 +270,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Middle Row: Top Issues (Left ~60%) and Charts Column (Right ~40%) */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.45fr 1fr', gap: '16px' }}>
+          <div className="dashboard-main-grid">
             {/* Left: Top Issues This Week Table Card */}
             <div className="ui-card" style={{ display: 'flex', flexDirection: 'column' }}>
               <div className="ui-card-header">
@@ -284,8 +284,8 @@ export default function DashboardPage() {
               </div>
 
               {/* Table */}
-              <div style={{ overflowX: 'auto', flex: 1 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+              <div className="table-responsive-wrapper" style={{ overflowX: 'auto', flex: 1 }}>
+                <table style={{ width: '100%', minWidth: '560px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid #f1f5f9', color: '#64748b', fontSize: '11.5px', fontWeight: 600 }}>
                       <th style={{ padding: '8px 10px', width: '32px' }}>#</th>
@@ -549,7 +549,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Bottom Row: 3 Equal Width Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+          <div className="dashboard-bottom-grid">
             {/* Card 1: Emerging Issues */}
             <div className="ui-card">
               <div className="ui-card-header">

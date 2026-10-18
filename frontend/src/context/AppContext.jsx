@@ -12,6 +12,11 @@ export function AppProvider({ children }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isBackendOnline, setIsBackendOnline] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpen((prev) => !prev);
+  }, []);
 
   // Authenticate session and check backend health
   const initSession = useCallback(async () => {
@@ -134,6 +139,9 @@ export function AppProvider({ children }) {
         markNotificationAsRead,
         markAllNotificationsAsRead,
         logout,
+        sidebarOpen,
+        setSidebarOpen,
+        toggleSidebar,
       }}
     >
       {children}

@@ -296,3 +296,400 @@ input, select {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* ==========================================================================
+   Responsive Navigation, Header, Grids, and Viewport Adaptations
+   ========================================================================== */
+
+/* Sidebar Layout */
+.app-sidebar {
+  width: var(--sidebar-width);
+  background-color: #ffffff;
+  border-right: 1px solid var(--border-card);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 18px 0;
+  min-height: 100vh;
+  flex-shrink: 0;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-close-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background-color: #f1f5f9;
+  color: #475569;
+  cursor: pointer;
+  border: 1px solid #e2e8f0;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+/* Header Layout */
+.app-header {
+  height: var(--header-height);
+  background-color: #ffffff;
+  border-bottom: 1px solid var(--border-card);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  flex-shrink: 0;
+}
+
+.header-left-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mobile-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background-color: #f8fafc;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
+}
+
+.mobile-menu-btn:hover {
+  background-color: #f1f5f9;
+}
+
+.header-search-box {
+  position: relative;
+  width: 340px;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Issue Analysis Responsive Grids */
+.issue-analysis-top-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1.3fr 0.9fr;
+  gap: 16px;
+}
+
+.issue-analysis-bottom-grid {
+  display: grid;
+  grid-template-columns: 1.45fr 1fr;
+  gap: 16px;
+}
+
+.table-responsive-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+}
+
+.table-responsive-wrapper table {
+  min-width: 600px;
+}
+
+/* Dashboard Responsive Grids */
+.dashboard-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+
+.dashboard-main-grid {
+  display: grid;
+  grid-template-columns: 1.45fr 1fr;
+  gap: 16px;
+}
+
+.dashboard-bottom-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+/* General Utility Responsive Grids */
+.kpi-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.kpi-grid-5 {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+
+.kpi-grid-6 {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+.split-grid-145-1 {
+  display: grid;
+  grid-template-columns: 1.45fr 1fr;
+  gap: 16px;
+}
+
+.split-grid-12-1 {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 16px;
+}
+
+.custom-table {
+  min-width: 650px;
+}
+
+/* Tablet & Laptop Adjustments */
+@media (max-width: 1100px) {
+  .issue-analysis-top-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .issue-analysis-top-grid > :last-child {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 992px) {
+  .dashboard-main-grid {
+    grid-template-columns: 1fr;
+  }
+  .dashboard-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+  .issue-analysis-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+  .dashboard-kpi-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .kpi-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .kpi-grid-5 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .kpi-grid-6 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .split-grid-145-1 {
+    grid-template-columns: 1fr;
+  }
+  .split-grid-12-1 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Mobile & Tablet Drawer Transition (< 768px) */
+@media (max-width: 768px) {
+  .app-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 100;
+    width: 260px;
+    max-width: 80vw;
+    height: 100vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25);
+    transform: translateX(-100%);
+  }
+
+  .app-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+    z-index: 99;
+  }
+
+  .sidebar-close-btn {
+    display: inline-flex;
+  }
+
+  .mobile-menu-btn {
+    display: inline-flex;
+  }
+
+  .app-header {
+    height: auto;
+    min-height: var(--header-height);
+    padding: 8px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .header-left-group {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .header-search-box {
+    flex: 1;
+    width: 100%;
+    min-width: 120px;
+  }
+
+  .header-controls {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .page-content {
+    padding: 14px 14px 24px 14px;
+    gap: 14px;
+  }
+
+  .page-header-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .page-header-actions {
+    justify-content: flex-start;
+  }
+
+  .issue-analysis-top-grid {
+    grid-template-columns: 1fr;
+  }
+  .issue-analysis-top-grid > :last-child {
+    grid-column: span 1;
+  }
+
+  .dashboard-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .kpi-grid-5 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .kpi-grid-6 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Small Screen Phones (320px, 375px, 390px, 430px) */
+@media (max-width: 480px) {
+  .app-header {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .header-left-group {
+    width: 100%;
+  }
+
+  .header-controls {
+    width: 100%;
+    justify-content: space-between;
+    padding-top: 6px;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  .header-profile-text {
+    display: none !important;
+  }
+
+  .date-filter-btn span,
+  .region-filter-btn span {
+    max-width: 85px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .page-content {
+    padding: 12px 10px 20px 10px;
+  }
+
+  .page-title-group h1 {
+    font-size: 20px;
+  }
+
+  .page-title-group p {
+    font-size: 12px;
+  }
+
+  .quote-banner {
+    white-space: normal;
+    font-size: 11.5px;
+    padding: 5px 10px;
+  }
+
+  .dashboard-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .kpi-grid-4 {
+    grid-template-columns: 1fr;
+  }
+
+  .kpi-grid-5 {
+    grid-template-columns: 1fr;
+  }
+
+  .kpi-grid-6 {
+    grid-template-columns: 1fr;
+  }
+
+  .india-map-container {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .ui-card {
+    padding: 14px 12px;
+  }
+}
+
+/* Ultra small viewports (320px) */
+@media (max-width: 340px) {
+  .date-filter-btn span,
+  .region-filter-btn span {
+    max-width: 65px;
+  }
+
+  .page-header-actions button {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+}

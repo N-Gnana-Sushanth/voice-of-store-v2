@@ -33,6 +33,7 @@ import Header from '../components/Header';
 import IndiaMap from '../components/IndiaMap';
 import { api } from '../api/client';
 import { useApp } from '../context/AppContext';
+import { generateIssueAnalysisPdf } from '../utils/pdfExport';
 import {
   TOP_ISSUES,
   ISSUE_ANALYSIS_CATEGORIES,
@@ -41,7 +42,7 @@ import {
 } from '../data/mockData';
 
 export default function IssueAnalysisPage() {
-  const { isLive: globalIsLive } = useApp();
+  const { isLive: globalIsLive, selectedDate, selectedRegion, user } = useApp();
   const [incidents, setIncidents] = useState(TOP_ISSUES);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [isLive, setIsLive] = useState(false);
@@ -103,27 +104,15 @@ export default function IssueAnalysisPage() {
     return catLower.includes(selLower) || selLower.includes(catLower);
   });
 
-  // Export report as CSV
+  // Export report as real PDF
   const handleExportReport = () => {
-    const headers = ['#', 'Issue Title', 'Category', 'Severity', 'Affected Stores', 'Owner', 'Evidence Excerpt'];
-    const rows = filteredIssues.map((issue) => [
-      issue.id,
-      `"${(issue.title || '').replace(/"/g, '""')}"`,
-      `"${(issue.category || '').replace(/"/g, '""')}"`,
-      issue.severity,
-      `"${issue.affectedStores || ''}"`,
-      `"${issue.owner || ''}"`,
-      `"${(issue.evidence || '').replace(/"/g, '""')}"`,
-    ]);
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `voice_of_store_issue_analysis_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    generateIssueAnalysisPdf({
+      issues: filteredIssues,
+      selectedDate,
+      selectedRegion,
+      selectedCategory,
+      user,
+    });
   };
 
   return (
@@ -166,7 +155,7 @@ export default function IssueAnalysisPage() {
               <p>Deep dive into categorised issues, root causes, and geographic spread.</p>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div className="page-header-actions">
               <button
                 onClick={loadData}
                 disabled={loading}
@@ -191,7 +180,7 @@ export default function IssueAnalysisPage() {
 
               <button
                 onClick={handleExportReport}
-                title="Export filtered analysis as CSV"
+                title="Export analysis as formatted PDF report"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -218,7 +207,7 @@ export default function IssueAnalysisPage() {
           </div>
 
           {/* Top Section: 3 Cards Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.3fr 0.9fr', gap: '16px' }}>
+          <div className="issue-analysis-top-grid">
             {/* 1. Issues by Category (Horizontal Bars) */}
             <div className="ui-card" style={{ display: 'flex', flexDirection: 'column' }}>
               <div className="ui-card-header">
@@ -516,7 +505,7 @@ export default function IssueAnalysisPage() {
           </div>
 
           {/* Bottom Section: Top Issues with Evidence + Geographic Spread */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.45fr 1fr', gap: '16px' }}>
+          <div className="issue-analysis-bottom-grid">
             {/* Left: Top Issues with Evidence Table */}
             <div className="ui-card" style={{ display: 'flex', flexDirection: 'column' }}>
               <div className="ui-card-header">
@@ -551,8 +540,8 @@ export default function IssueAnalysisPage() {
                 )}
               </div>
 
-              <div style={{ overflowX: 'auto', flex: 1 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12.5px' }}>
+              <div className="table-responsive-wrapper" style={{ overflowX: 'auto', flex: 1 }}>
+                <table style={{ width: '100%', minWidth: '640px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12.5px' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid #f1f5f9', color: '#64748b', fontSize: '11.5px', fontWeight: 600 }}>
                       <th style={{ padding: '8px 10px', width: '28px' }}>#</th>

@@ -366,7 +366,7 @@ export default function EmergingIssuesPage() {
               <p>Early detection algorithms, anomaly spikes, and validation against known incidents.</p>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div className="page-header-actions">
               <button
                 onClick={handleTriggerScan}
                 disabled={scanning}
@@ -499,7 +499,7 @@ export default function EmergingIssuesPage() {
           )}
 
           {/* Top 4 KPI Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
+          <div className="kpi-grid-4">
             {kpis.map((kpi) => {
               const Icon = kpi.icon;
               return (
@@ -545,7 +545,7 @@ export default function EmergingIssuesPage() {
           </div>
 
           {/* Middle Row: Left Column 3 Detailed Cards + Right Column 2 Charts */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.45fr 1fr', gap: '16px' }}>
+          <div className="split-grid-145-1">
             {/* Left Column: 3 Detailed Emerging Issue Cards */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div
@@ -1020,7 +1020,7 @@ export default function EmergingIssuesPage() {
           {activeTab === 'precision' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Headline Stat Cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
+              <div className="kpi-grid-4">
                 <div className="ui-card" style={{ padding: '18px', borderLeft: '4px solid #059669' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>

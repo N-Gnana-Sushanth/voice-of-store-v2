@@ -1,0 +1,101 @@
+{
+  "model_version": "v2.0.0-multilingual-tfidf",
+  "selected_architecture": "multilingual_char_word_tfidf",
+  "trained_at": "2026-10-18T15:41:14.384047+00:00",
+  "random_seed": 42,
+  "dataset_metadata": {
+    "dataset_status": "MISSING_REAL_DATASET",
+    "dataset_path": "None (Seed Fixtures Used)",
+    "total_records_read": 86,
+    "valid_records": 86,
+    "rejected_records": 0,
+    "duplicate_records": 0,
+    "rejection_reasons": {},
+    "missing_fields": {},
+    "class_distribution": {
+      "Customer service": 7,
+      "Staff behavior": 8,
+      "Cleanliness and hygiene": 10,
+      "Inventory and product availability": 10,
+      "Product or food quality": 10,
+      "Safety": 10,
+      "Allergens": 9,
+      "Billing and payments": 10,
+      "Equipment": 7,
+      "Other or unknown": 5
+    },
+    "language_distribution": {
+      "en": 77,
+      "hinglish": 9
+    },
+    "channel_distribution": {}
+  },
+  "partition_sizes": {
+    "total_valid_records": 86,
+    "train_size": 60,
+    "val_size": 13,
+    "test_size": 13
+  },
+  "model_comparison": {
+    "word_ngram_baseline": {
+      "val_accuracy": 0.1538,
+      "val_macro_f1": 0.0833
+    },
+    "multilingual_char_word_tfidf": {
+      "val_accuracy": 0.2308,
+      "val_macro_f1": 0.1224
+    }
+  },
+  "test_metrics": {
+    "test_accuracy": 0.0,
+    "test_macro_f1": 0.0,
+    "per_class": {
+      "Allergens": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "support": 1
+      },
+      "Cleanliness and hygiene": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "support": 0
+      },
+      "Customer service": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "support": 0
+      },
+      "Inventory and product availability": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "support": 7
+      },
+      "Product or food quality": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "support": 0
+      },
+      "Safety": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "support": 5
+      },
+      "Staff behavior": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "support": 0
+      }
+    }
+  },
+  "artifacts": {
+    "model_joblib": "classifier_v2.0.0-multilingual-tfidf.joblib",
+    "label_mapping_json": "label_mapping_v2.0.0-multilingual-tfidf.json"
+  }
+}

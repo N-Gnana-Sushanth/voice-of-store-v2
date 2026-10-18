@@ -16,6 +16,7 @@ import {
   Check,
   RefreshCw,
   X,
+  Menu,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -35,6 +36,7 @@ export default function Header({ searchPlaceholder = "Search stores, issues, key
     markNotificationAsRead,
     markAllNotificationsAsRead,
     logout,
+    toggleSidebar,
   } = useApp();
 
   const [showDateDropdown, setShowDateDropdown] = useState(false);
@@ -145,33 +147,29 @@ export default function Header({ searchPlaceholder = "Search stores, issues, key
   };
 
   return (
-    <header
-      style={{
-        height: 'var(--header-height)',
-        backgroundColor: '#ffffff',
-        borderBottom: '1px solid var(--border-card)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 24px',
-        position: 'sticky',
-        top: 0,
-        zIndex: 40,
-        flexShrink: 0,
-      }}
-    >
-      {/* Search Bar */}
-      <div ref={searchRef} style={{ position: 'relative', width: '340px' }}>
-        <Search
-          size={16}
-          style={{
-            position: 'absolute',
-            left: '12px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            color: '#94a3b8',
-          }}
-        />
+    <header className="app-header">
+      {/* Search Bar & Mobile Menu */}
+      <div className="header-left-group">
+        <button
+          className="mobile-menu-btn"
+          onClick={toggleSidebar}
+          title="Open navigation menu"
+          aria-label="Open navigation menu"
+        >
+          <Menu size={18} />
+        </button>
+
+        <div ref={searchRef} className="header-search-box">
+          <Search
+            size={16}
+            style={{
+              position: 'absolute',
+              left: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: '#94a3b8',
+            }}
+          />
         <input
           type="text"
           value={searchValue}
@@ -258,12 +256,14 @@ export default function Header({ searchPlaceholder = "Search stores, issues, key
           </div>
         )}
       </div>
+      </div>
 
       {/* Right Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div className="header-controls" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         {/* Date Filter Dropdown */}
         <div ref={dateRef} style={{ position: 'relative' }}>
           <button
+            className="date-filter-btn"
             onClick={() => {
               setShowDateDropdown(!showDateDropdown);
               setShowRegionDropdown(false);
@@ -302,6 +302,7 @@ export default function Header({ searchPlaceholder = "Search stores, issues, key
                 borderRadius: '10px',
                 boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
                 minWidth: '240px',
+                maxWidth: 'calc(100vw - 24px)',
                 padding: '6px',
                 zIndex: 50,
               }}
@@ -333,6 +334,7 @@ export default function Header({ searchPlaceholder = "Search stores, issues, key
         {/* Region Filter Dropdown */}
         <div ref={regionRef} style={{ position: 'relative' }}>
           <button
+            className="region-filter-btn"
             onClick={() => {
               setShowRegionDropdown(!showRegionDropdown);
               setShowDateDropdown(false);
@@ -371,6 +373,7 @@ export default function Header({ searchPlaceholder = "Search stores, issues, key
                 borderRadius: '10px',
                 boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
                 minWidth: '260px',
+                maxWidth: 'calc(100vw - 24px)',
                 padding: '6px',
                 zIndex: 50,
               }}
@@ -458,6 +461,7 @@ export default function Header({ searchPlaceholder = "Search stores, issues, key
                 top: '46px',
                 right: 0,
                 width: '360px',
+                maxWidth: 'calc(100vw - 24px)',
                 backgroundColor: '#ffffff',
                 border: '1px solid #e2e8f0',
                 borderRadius: '12px',
@@ -680,7 +684,7 @@ export default function Header({ searchPlaceholder = "Search stores, issues, key
             >
               {user.initials || 'SU'}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+            <div className="header-profile-text" style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
               <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#0f172a' }}>
                 {user.name || 'Sushanth'}
               </span>
@@ -699,6 +703,7 @@ export default function Header({ searchPlaceholder = "Search stores, issues, key
                 top: '46px',
                 right: 0,
                 width: '240px',
+                maxWidth: 'calc(100vw - 24px)',
                 backgroundColor: '#ffffff',
                 border: '1px solid #e2e8f0',
                 borderRadius: '10px',

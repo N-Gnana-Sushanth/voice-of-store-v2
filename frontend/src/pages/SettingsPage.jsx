@@ -117,7 +117,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '16px' }}>
+          <div className="split-grid-12-1">
             {/* Left Column: Algorithm Settings */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="ui-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>

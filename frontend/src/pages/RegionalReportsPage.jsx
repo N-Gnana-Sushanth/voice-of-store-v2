@@ -419,7 +419,7 @@ export default function RegionalReportsPage() {
           {activeTab === 'overview' && (
             <>
               {/* 4 Regional Summary Cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
+              <div className="kpi-grid-4">
                 {regions.map((reg) => (
                   <div
                     key={reg.name}

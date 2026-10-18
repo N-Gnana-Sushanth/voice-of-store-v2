@@ -406,7 +406,7 @@ export default function ActionQueuePage() {
           {activeTab === 'tasks' && (
             <>
               {/* Stat Cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
+              <div className="kpi-grid-4">
                 <div className="ui-card" style={{ padding: '16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b', fontSize: '12px' }}>
                     <ClipboardList size={16} />
@@ -637,7 +637,7 @@ export default function ActionQueuePage() {
           {activeTab === 'routing' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* 6 Department Cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px' }}>
+              <div className="kpi-grid-6">
                 {routingGroups.map((grp) => (
                   <div
                     key={grp.department}

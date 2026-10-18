@@ -9,11 +9,14 @@ import {
   FileBarChart,
   Store,
   Settings,
+  X,
 } from 'lucide-react';
 import BrandLogo from './BrandLogo';
+import { useApp } from '../context/AppContext';
 
 export default function Sidebar() {
   const location = useLocation();
+  const { sidebarOpen, setSidebarOpen } = useApp();
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
@@ -42,35 +45,39 @@ export default function Sidebar() {
   };
 
   return (
-    <aside
-      style={{
-        width: 'var(--sidebar-width)',
-        backgroundColor: '#ffffff',
-        borderRight: '1px solid var(--border-card)',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        padding: '18px 0',
-        minHeight: '100vh',
-        flexShrink: 0,
-      }}
-    >
-      <div>
-        {/* Top Logo */}
-        <div style={{ padding: '0 20px 22px 20px' }}>
-          <BrandLogo to="/dashboard" />
-        </div>
+    <>
+      {sidebarOpen && (
+        <div
+          className="sidebar-backdrop"
+          onClick={() => setSidebarOpen(false)}
+          aria-label="Close navigation"
+        />
+      )}
+      <aside className={`app-sidebar ${sidebarOpen ? 'open' : ''}`}>
+        <div>
+          {/* Top Logo & Mobile Close */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px 22px 20px' }}>
+            <BrandLogo to="/dashboard" />
+            <button
+              className="sidebar-close-btn"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Close menu"
+            >
+              <X size={18} />
+            </button>
+          </div>
 
-        {/* Navigation List */}
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
+          {/* Navigation List */}
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
 
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setSidebarOpen(false)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -189,5 +196,6 @@ export default function Sidebar() {
         </div>
       </div>
     </aside>
+    </>
   );
 }

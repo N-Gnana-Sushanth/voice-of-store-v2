@@ -292,7 +292,7 @@ export default function FeedbackStreamPage() {
           </div>
 
           {/* Top 5 Channel Metric Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '14px' }}>
+          <div className="kpi-grid-5">
             {channelCards.map((card) => {
               const Icon = card.icon;
               const isSelected = selectedChannel === card.channelKey;

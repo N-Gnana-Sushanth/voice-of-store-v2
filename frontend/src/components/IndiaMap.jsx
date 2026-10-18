@@ -17,7 +17,7 @@ export default function IndiaMap() {
   ];
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', width: '100%' }}>
+    <div className="india-map-container" style={{ display: 'flex', alignItems: 'center', gap: '20px', width: '100%' }}>
       {/* India Map Geometric Representation */}
       <div style={{ width: '130px', height: '150px', position: 'relative', flexShrink: 0 }}>
         <svg viewBox="0 0 140 160" width="100%" height="100%">
